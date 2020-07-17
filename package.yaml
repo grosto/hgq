@@ -53,5 +53,7 @@ tests:
       - -with-rtsopts=-N
     dependencies:
       - graphql-haskell
+      - hspec
+      - hspec-megaparsec
 
-default-extensions: OverloadedStrings, LambdaCase, TypeFamilies
+default-extensions: OverloadedStrings, LambdaCase, TypeFamilies, NoImplicitPrelude

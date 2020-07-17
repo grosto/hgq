@@ -3,7 +3,9 @@ module Lib
     )
 where
 
-import           Parser
+import           System.IO                      ( IO
+                                                , putStrLn
+                                                )
 
 
 someFunc :: IO ()
