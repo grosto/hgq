@@ -2,44 +2,46 @@ module Lexer where
 
 import Control.Applicative
   ( Alternative (..),
+    pure,
     (*>),
+    (<$>),
     (<*),
     (<*>),
-    pure,
-    (<$>)
   )
 import Control.Monad ((>>))
 import Data.Char (Char, isAsciiLower, isAsciiUpper)
 import Data.Bool (Bool, (||))
 import Data.Eq ((/=))
-import Data.Maybe (Maybe(..))
 import Data.Function (($))
-import GHC.Num (Num, (+), Integer)
-import GHC.Float (Double)
-import GHC.Real (fromIntegral)
+import Data.Functor (($>))
+import Data.List (map)
+import Data.Maybe (Maybe (..))
 import qualified Data.Text as T
 import Data.Void (Void)
+import GHC.Float (Double)
+import GHC.Num (Integer, Num, (+))
+import GHC.Real (fromIntegral)
 import Text.Megaparsec
   ( Parsec,
     between,
-    optional,
-    skipSome,
-    parseTest,
-    eof,
-    notFollowedBy,
-    satisfy,
     choice,
-    takeWhileP,
+    eof,
     manyTill,
-    oneOf
+    notFollowedBy,
+    oneOf,
+    optional,
+    parseTest,
+    satisfy,
+    skipSome,
+    takeWhileP,
   )
 import Text.Megaparsec.Char
   ( char,
     digitChar,
-    space1,
     numberChar,
+    printChar,
+    space1,
     string,
-    
   )
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -61,7 +63,6 @@ comment = L.skipLineComment "#"
 
 spaceConsumer :: Parser ()
 spaceConsumer = L.space ignoredChars comment empty
-
 
 -- Lexing Primitives
 lexeme :: Parser a -> Parser a
@@ -101,8 +102,7 @@ brackets = between (symbol "{") (symbol "}")
 squareBrackets :: Parser a -> Parser a
 squareBrackets = between (symbol "[") (symbol "]")
 
-
--- Name 
+-- Name
 name :: Parser T.Text
 name = T.cons <$> nameStart <*> (T.pack <$> many (letter <|> digitChar <|> char '_'))
 
@@ -114,24 +114,41 @@ letter = satisfy w
 nameStart :: Parser Char
 nameStart = letter <|> char '_'
 
-
 -- Numbers
 intVal :: Parser Integer
-intVal = L.signed (pure ()) $ lexeme integerPart 
+intVal = L.signed (pure ()) $ lexeme integerPart
 
 integerPart :: Parser Integer
 integerPart = (zero <|> L.decimal) <* notFollowedBy (digitChar <|> nameStart <|> char '.')
 
 zero :: (Num n) => Parser n
-zero = char '0' *> pure 0 
+zero = char '0' *> pure 0
 
 -- This is not really according to spec
 floatVal :: Parser Double
 floatVal = L.signed (pure ()) L.float
 
-
 stringValue :: Parser T.Text
 stringValue = char '"' *> (T.pack <$> manyTill stringChar (char '"'))
   where
-    stringChar = choice [satisfy (\c -> c /= '\\'), escapedChar]
-    escapedChar = char '\\' *> oneOf ['"', '\\', '/', 'b', 'f', 'n', 'r', 't']
+    stringChar = do
+      x <- printChar
+      case x of
+        '\\' -> choice escapeChars
+        x -> pure x
+
+escapeChars :: [Parser Char]
+escapeChars = map codeToReplacement escapeCharAndReplacements
+  where
+    codeToReplacement :: (Char, Char) -> Parser Char
+    codeToReplacement (code, replacement) = char code $> replacement
+    escapeCharAndReplacements =
+      [ ('b', '\b'),
+        ('n', '\n'),
+        ('f', '\f'),
+        ('r', '\r'),
+        ('t', '\t'),
+        ('\\', '\\'),
+        ('\"', '\"'),
+        ('/', '/')
+      ]

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f230b787cc9b6c6b0ca384b92bdbfcb6b3241af8faa0799a7e5e907df50d2421
+-- hash: 3025e6708f53db029b97ccaedab84570ab94ff073e6f931fedaf126d8dc5dcd6
 
 name:           graphql-haskell
 version:        0.1.0.0
@@ -73,5 +73,6 @@ test-suite graphql-haskell-test
     , hspec
     , hspec-megaparsec
     , megaparsec
+    , raw-strings-qq
     , text
   default-language: Haskell2010

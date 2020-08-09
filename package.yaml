@@ -55,5 +55,6 @@ tests:
       - graphql-haskell
       - hspec
       - hspec-megaparsec
+      - raw-strings-qq
 
 default-extensions: OverloadedStrings, LambdaCase, TypeFamilies, NoImplicitPrelude

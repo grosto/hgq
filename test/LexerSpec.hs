@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module LexerSpec
   ( spec,
   )
@@ -6,10 +8,11 @@ where
 import Control.Applicative (pure)
 import Data.Either (Either)
 import Data.Int (Int)
-import Prelude (Integer)
 import Data.Function (($))
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Void (Void)
+import GHC.Num (Integer)
 import Lexer
 import Test.Hspec
   ( Spec,
@@ -18,18 +21,19 @@ import Test.Hspec
     it,
   )
 import Test.Hspec.Megaparsec
-  ( shouldFailOn,
+  ( failsLeaving,
+    initialState,
+    shouldFailOn,
     shouldParse,
     shouldSucceedOn,
-    failsLeaving,
-    initialState,
-    succeedsLeaving
+    succeedsLeaving,
   )
 import Text.Megaparsec
   ( ParseErrorBundle,
     parse,
-    runParser'
+    runParser',
   )
+import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = describe "Lexer" $ do
@@ -40,7 +44,7 @@ spec = describe "Lexer" $ do
     parse dollarSign "" "$    " `shouldParse` "$"
     runParser' dollarSign (initialState "$   2") `succeedsLeaving` "2"
     parse threedots "" "..." `shouldParse` "..."
-    parse equal "" "=" `shouldParse` "="
+    parse equal "" "= " `shouldParse` "="
     parse atSymbol "" "@" `shouldParse` "@"
     parse pipe "" "|" `shouldParse` "|"
     runBetween parens `shouldSucceedOn` "(    )"
@@ -48,10 +52,10 @@ spec = describe "Lexer" $ do
     runBetween brackets `shouldSucceedOn` "{    }"
 
   it "lexes strings" $ do
-    parse stringValue "" "\"\"" `shouldParse` ""
-    parse stringValue "" "\" white space \"" `shouldParse` " white space "
-    parse stringValue "" "\"quote \\\"" `shouldParse` "quote \\"
-    parse stringValue "" "\"escaped \n\"" `shouldParse` "escaped \n"
+    parse stringValue "" `shouldFailOn` [r|"\  "|]
+    parse stringValue "" [r|" white space "|] `shouldParse` " white space "
+    parse stringValue "" [r|"\\"|] `shouldParse` "\\"
+    parse stringValue "" [r|"escaped \n"|] `shouldParse` "escaped \n"
 
   it "lexes integer" $ do
     parse intVal "" "4" `shouldParse` (4 :: Integer)
@@ -64,7 +68,7 @@ spec = describe "Lexer" $ do
     runParser' intVal (initialState "4a") `failsLeaving` "a"
     runParser' intVal (initialState "4.22") `failsLeaving` ".22"
     runParser' intVal (initialState "4  .22") `succeedsLeaving` ".22"
-  
+
   it "lexes floats" $ do
     parse floatVal "" "-4.123" `shouldParse` (-4.123)
     parse floatVal "" "0.123" `shouldParse` 0.123
@@ -79,7 +83,6 @@ spec = describe "Lexer" $ do
     parse floatVal "" "-1.123e-4" `shouldParse` (-1.123e-4)
     parse floatVal "" "-1.123e+4" `shouldParse` (-1.123e+4)
     parse floatVal "" "-1.123e4567" `shouldParse` (-1.123e4567)
-
 
 runBetween ::
   (Parser () -> Parser ()) -> Text -> Either (ParseErrorBundle Text Void) ()
