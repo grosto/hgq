@@ -9,13 +9,16 @@ import Control.Applicative
     (<*>),
   )
 import Control.Monad ((>>))
-import Data.Char (Char, isAsciiLower, isAsciiUpper)
 import Data.Bool (Bool, (||))
-import Data.Eq ((/=))
-import Data.Function (($))
+import Data.Char (Char, isAsciiLower, isAsciiUpper)
+import Data.Eq ((/=), (==))
+import Data.Foldable (foldr')
+import Data.Function (($), (.))
 import Data.Functor (($>))
-import Data.List (map)
+import Data.Int (Int)
+import Data.List (init, last, map)
 import Data.Maybe (Maybe (..))
+import Data.Ord (Ordering (EQ), (<), (>))
 import qualified Data.Text as T
 import Data.Void (Void)
 import GHC.Float (Double)
@@ -23,6 +26,7 @@ import GHC.Num (Integer, Num, (+))
 import GHC.Real (fromIntegral)
 import Text.Megaparsec
   ( Parsec,
+    anySingle,
     between,
     choice,
     eof,
@@ -129,8 +133,9 @@ floatVal :: Parser Double
 floatVal = L.signed (pure ()) L.float
 
 stringValue :: Parser T.Text
-stringValue = char '"' *> (T.pack <$> manyTill stringChar (char '"'))
+stringValue = blockString <|> singleLine
   where
+    singleLine = char '"' *> (T.pack <$> manyTill stringChar (char '"'))
     stringChar = do
       x <- printChar
       case x of
@@ -140,8 +145,9 @@ stringValue = char '"' *> (T.pack <$> manyTill stringChar (char '"'))
 escapeChars :: [Parser Char]
 escapeChars = map codeToReplacement escapeCharAndReplacements
   where
+    -- TODO: support unicode code escapes
     codeToReplacement :: (Char, Char) -> Parser Char
-    codeToReplacement (code, replacement) = char code $> replacement
+    codeToReplacement (code, replacement) = (char code $> replacement)
     escapeCharAndReplacements =
       [ ('b', '\b'),
         ('n', '\n'),
@@ -152,3 +158,39 @@ escapeChars = map codeToReplacement escapeCharAndReplacements
         ('\"', '\"'),
         ('/', '/')
       ]
+
+blockString :: Parser T.Text
+blockString = string "\"\"\"" *> (formatBlockString . T.pack <$> manyTill anySingle (string "\"\"\""))
+
+formatBlockString :: T.Text -> T.Text
+formatBlockString x =
+  case T.lines x of
+    [] -> ""
+    (z : []) -> z
+    -- We have to drop last extra \n
+    (firstLine : xs) ->
+      (T.dropEnd 1)
+        . T.unlines
+        . removeLastLineIfItsOnlySpace
+        . removeFirstLineIfItsOnlySpace firstLine
+        $ formatCommonIndent xs
+  where
+    removeFirstLineIfItsOnlySpace z xs = if isOnlySpace z then xs else z : xs
+    removeLastLineIfItsOnlySpace xs = if isOnlySpace $ last xs then init xs else xs
+    -- Can I make this more efficient?
+    isOnlySpace = T.all (== ' ')
+    formatCommonIndent xs = case calculateCommonIndent xs of
+      Nothing -> xs
+      Just commonIndent -> map (T.drop commonIndent) xs
+
+calculateCommonIndent :: [T.Text] -> Maybe Int
+calculateCommonIndent xs = foldr' accCommonIndet Nothing xs
+  where
+    getIndent = T.length . (T.takeWhile (== ' '))
+    accCommonIndet line commonIndent =
+      let indent = getIndent line
+       in if T.length line > indent
+            then Just $ case commonIndent of
+              Nothing -> indent
+              Just n -> if indent < n then indent else n
+            else commonIndent
