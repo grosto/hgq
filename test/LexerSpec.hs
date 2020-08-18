@@ -53,6 +53,7 @@ spec = describe "Lexer" $ do
       runBetween parens `shouldSucceedOn` "(    )"
       runBetween squareBrackets `shouldSucceedOn` "[    ]"
       runBetween brackets `shouldSucceedOn` "{    }"
+      parse (brackets bang) "" `shouldSucceedOn` "{ ! }"
 
     it "lexes strings" $ do
       parse stringValue "" [r|" white space "|] `shouldParse` " white space "

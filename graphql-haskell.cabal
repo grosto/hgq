@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3025e6708f53db029b97ccaedab84570ab94ff073e6f931fedaf126d8dc5dcd6
+-- hash: d83815bf949ddb0cd36818daab4d6448025cb40aada7d60e10fae14b93b95b71
 
 name:           graphql-haskell
 version:        0.1.0.0
@@ -62,6 +62,7 @@ test-suite graphql-haskell-test
   main-is: Spec.hs
   other-modules:
       LexerSpec
+      ParserSpec
       Paths_graphql_haskell
   hs-source-dirs:
       test

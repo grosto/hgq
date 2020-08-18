@@ -4,45 +4,41 @@ import Control.Applicative
   ( Alternative (..),
     pure,
     (*>),
+    (<$),
     (<$>),
     (<*),
     (<*>),
   )
 import Control.Monad ((>>))
-import Data.Bool (Bool, (||))
+import Data.Bool ((||))
 import Data.Char (Char, isAsciiLower, isAsciiUpper)
-import Data.Eq ((/=), (==))
+import Data.Eq ((==))
 import Data.Foldable (foldr')
 import Data.Function (($), (.))
 import Data.Functor (($>))
 import Data.Int (Int)
 import Data.List (init, last, map)
 import Data.Maybe (Maybe (..))
-import Data.Ord (Ordering (EQ), (<), (>))
+import Data.Ord ((<), (>))
 import qualified Data.Text as T
 import Data.Void (Void)
 import GHC.Float (Double)
-import GHC.Num (Integer, Num, (+))
-import GHC.Real (fromIntegral)
+import GHC.Num (Integer, Num)
 import Text.Megaparsec
   ( Parsec,
     anySingle,
     between,
     choice,
-    eof,
     manyTill,
     notFollowedBy,
-    oneOf,
     optional,
-    parseTest,
     satisfy,
     skipSome,
-    takeWhileP,
   )
 import Text.Megaparsec.Char
   ( char,
     digitChar,
-    numberChar,
+    newline,
     printChar,
     space1,
     string,
@@ -52,7 +48,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void T.Text
 
 -- Ignored
-
 unicodeBOM :: Parser ()
 unicodeBOM = optional (char '\xfeff') >> pure ()
 
@@ -108,7 +103,7 @@ squareBrackets = between (symbol "[") (symbol "]")
 
 -- Name
 name :: Parser T.Text
-name = T.cons <$> nameStart <*> (T.pack <$> many (letter <|> digitChar <|> char '_'))
+name = lexeme $ T.cons <$> nameStart <*> (T.pack <$> many (letter <|> digitChar <|> char '_'))
 
 letter :: Parser Char
 letter = satisfy w
@@ -167,8 +162,8 @@ formatBlockString x =
   case T.lines x of
     [] -> ""
     (z : []) -> z
-    -- We have to drop last extra \n
     (firstLine : xs) ->
+      -- We have to drop last extra \n from unlines
       (T.dropEnd 1)
         . T.unlines
         . removeLastLineIfItsOnlySpace
