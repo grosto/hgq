@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d83815bf949ddb0cd36818daab4d6448025cb40aada7d60e10fae14b93b95b71
+-- hash: c1e3abdc15fcf441f345e1e4df76d7ff0022ea83f254cf7f0686d21755428c70
 
 name:           graphql-haskell
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      AST
       Lexer
       Lib
       Parser

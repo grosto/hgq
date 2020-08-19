@@ -5,6 +5,7 @@ module ParserSpec
   )
 where
 
+import AST
 import Control.Applicative (pure)
 import Data.Either (Either)
 import Data.Function (($))
@@ -41,15 +42,28 @@ import Text.RawString.QQ (r)
 spec :: Spec
 spec = describe "Parser" $ do
   context "operations" $ do
-    fit "should parse mutation without arguments" $ do
+    fit "should parse operation with name" $ do
       parse
         document
         ""
         [r|mutation like { 
-          likeStory
+          like
          } |]
         `shouldParse` ( DocumentOperation $
-                          Operation Mutation "like" $
-                            SelectionSet $
-                              [SelectionField $ Field "likeStory" Nothing]
+                          Operation Mutation (Just "like") [] $
+                            [SelectionField $ Field "like" [] []]
+                      )
+    fit "should parse operation with arguments" $ do
+      parse
+        document
+        ""
+        [r|query like($id: Int) { 
+          likeStory (id: $id)
+         } |]
+        `shouldParse` ( DocumentOperation $
+                          Operation
+                            Query
+                            (Just "like")
+                            [VariableDefinition (Variable "id") (NamedType "Int")]
+                            $ [SelectionField $ Field "likeStory" [Argument (Name "id") (VVariable (Variable "id"))] []]
                       )

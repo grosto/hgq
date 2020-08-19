@@ -4,76 +4,58 @@
 
 module Parser where
 
-import Control.Applicative (pure, (<$), (<$>), (<*>))
-import Control.Monad
-import Data.Eq (Eq)
-import Data.Function (($))
-import Data.Maybe (Maybe (..))
-import Data.Ord (Ord)
-import Data.String (IsString)
-import qualified Data.Text as T
-import GHC.Show (Show)
+import qualified AST
+import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
+import Data.Function (($), (.))
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
-import Text.Megaparsec.Char
-import Text.Megaparsec.Debug
 
-newtype Name = Name {unName :: T.Text}
-  deriving (Eq, Ord, Show, IsString)
+document :: Parser AST.Document
+document = AST.DocumentOperation <$> operation
 
-type Description = T.Text
-
-data ScalarTypeDefinition = ScalarTypeDefinition
-  { description :: Description,
-    sTDName :: Name
-  }
-
-data Document = DocumentOperation Operation
-  deriving (Show, Eq)
-
-data OperationType = Query | Mutation | Subscription
-  deriving (Show, Eq)
-
-data Operation = Operation
-  { oOperationType :: OperationType,
-    oName :: Name,
-    oSelectionSet :: SelectionSet
-  }
-  deriving (Show, Eq)
-
-data SelectionSet = SelectionSet [Selection]
-  deriving (Show, Eq)
-
-data Selection = SelectionField Field
-  deriving (Show, Eq)
-
-data Field = Field
-  { fname :: Name,
-    fselectionSet :: Maybe SelectionSet
-  }
-  deriving (Show, Eq)
-
-document :: Parser Document
-document = DocumentOperation <$> operation
-
-operationType :: Parser OperationType
+operationType :: Parser AST.OperationType
 operationType =
-  Query <$ Lexer.symbol "query"
-    <|> Mutation <$ Lexer.symbol "mutation"
-    <|> Subscription <$ Lexer.symbol "subscription"
+  AST.Query <$ Lexer.symbol "query"
+    <|> AST.Mutation <$ Lexer.symbol "mutation"
+    <|> AST.Subscription <$ Lexer.symbol "subscription"
 
-operation :: Parser Operation
-operation = Operation <$> operationType <*> name <*> selectionSet
+operation :: Parser AST.Operation
+operation = AST.Operation <$> operationType <*> optional name <*> variableDefinitions <*> selectionSet
 
-field :: Parser Field
-field = Field <$> name <*> ((Just <$> selectionSet) <|> pure Nothing)
+variableDefinitions :: Parser [AST.VariableDefinition]
+variableDefinitions = (Lexer.parens $ some variableDefinition) <|> pure []
 
-name :: Parser Name
-name = Name <$> Lexer.name
+variableDefinition :: Parser AST.VariableDefinition
+variableDefinition = AST.VariableDefinition <$> variable <* Lexer.colon <*> gQLType
 
-selectionSet :: Parser SelectionSet
-selectionSet = SelectionSet <$> (Lexer.brackets $ ((: []) <$> selection))
+variable :: Parser AST.Variable
+variable = AST.Variable <$> (Lexer.dollarSign *> name)
 
-selection :: Parser Selection
-selection = SelectionField <$> field
+field :: Parser AST.Field
+field = AST.Field <$> name <*> arguments <*> (selectionSet <|> pure [])
+
+name :: Parser AST.Name
+name = AST.Name <$> Lexer.name
+
+selectionSet :: Parser AST.SelectionSet
+selectionSet = Lexer.brackets $ some selection
+
+selection :: Parser AST.Selection
+selection = AST.SelectionField <$> field
+
+arguments :: Parser [AST.Argument]
+arguments = (Lexer.parens $ some argument) <|> pure []
+
+argument :: Parser AST.Argument
+argument = AST.Argument <$> name <* Lexer.colon <*> value
+
+value :: Parser AST.Value
+value = AST.VVariable <$> variable
+
+-- Types
+gQLType :: Parser AST.GQLType
+gQLType = namedType
+
+namedType :: Parser AST.GQLType
+namedType = AST.NamedType <$> name
