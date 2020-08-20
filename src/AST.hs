@@ -4,11 +4,15 @@
 
 module AST where
 
+import Data.Bool (Bool)
 import Data.Eq (Eq)
+import qualified Data.Map.Strict as Map
 import Data.Maybe (Maybe (..))
 import Data.Ord (Ord)
 import Data.String (IsString)
 import qualified Data.Text as T
+import GHC.Float (Double)
+import GHC.Num (Integer)
 import GHC.Show (Show)
 
 newtype Name = Name {unName :: T.Text}
@@ -64,7 +68,25 @@ data Argument = Argument
   }
   deriving (Show, Eq)
 
-data Value = VVariable Variable
+data Value
+  = VVariable Variable
+  | VInt Integer
+  | VFloat Double
+  | VString T.Text
+  | VBool Bool
+  | VNull
+  | VList [Value]
+  | VObject (Map.Map Name Value)
+  deriving (Show, Eq)
+
+data ValueConst
+  = VCInt Integer
+  | VCFloat Double
+  | VCString T.Text
+  | VCBool Bool
+  | VCNull
+  | VCList [ValueConst]
+  | VCObject (Map.Map Name ValueConst)
   deriving (Show, Eq)
 
 -- Types

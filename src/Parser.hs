@@ -6,7 +6,9 @@ module Parser where
 
 import qualified AST
 import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
-import Data.Function (($), (.))
+import Data.Bool (Bool (..))
+import Data.Function (($))
+import qualified Data.Map.Strict as Map
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
@@ -51,7 +53,42 @@ argument :: Parser AST.Argument
 argument = AST.Argument <$> name <* Lexer.colon <*> value
 
 value :: Parser AST.Value
-value = AST.VVariable <$> variable
+value =
+  choice
+    [ AST.VBool <$> boolVal,
+      AST.VNull <$ Lexer.symbol "null",
+      AST.VVariable <$> variable,
+      try $ AST.VFloat <$> Lexer.floatVal,
+      AST.VInt <$> Lexer.intVal,
+      AST.VString <$> Lexer.stringVal,
+      AST.VList <$> listG value,
+      AST.VObject <$> objectG value
+    ]
+
+valueConst :: Parser AST.ValueConst
+valueConst =
+  choice
+    [ AST.VCBool <$> boolVal,
+      AST.VCNull <$ Lexer.symbol "null",
+      try $ AST.VCFloat <$> Lexer.floatVal,
+      AST.VCInt <$> Lexer.intVal,
+      AST.VCString <$> Lexer.stringVal,
+      AST.VCList <$> listG valueConst,
+      AST.VCObject <$> objectG valueConst
+    ]
+
+listG :: Parser a -> Parser [a]
+listG val = Lexer.squareBrackets $ many val
+
+objectG :: Parser a -> Parser (Map.Map AST.Name a)
+-- I can write this more efficiently for sure
+objectG val = Lexer.brackets $ Map.fromList <$> (many $ objectFieldG val)
+
+objectFieldG :: Parser a -> Parser (AST.Name, a)
+objectFieldG val = (,) <$> name <* Lexer.colon <*> val
+
+boolVal :: Parser Bool
+boolVal = True <$ Lexer.symbol "true" <|> False <$ Lexer.symbol "false"
 
 -- Types
 gQLType :: Parser AST.GQLType

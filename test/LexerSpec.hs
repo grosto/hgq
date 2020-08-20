@@ -56,18 +56,18 @@ spec = describe "Lexer" $ do
       parse (brackets bang) "" `shouldSucceedOn` "{ ! }"
 
     it "lexes strings" $ do
-      parse stringValue "" [r|" white space "|] `shouldParse` " white space "
-      parse stringValue "" [r|"\\"|] `shouldParse` "\\"
-      parse stringValue "" [r|"escaped \n"|] `shouldParse` "escaped \n"
-      parse stringValue "" `shouldFailOn` [r|"\g"|]
-      parse stringValue "" `shouldFailOn` [r|"\  "|]
+      parse stringVal "" [r|" white space "|] `shouldParse` " white space "
+      parse stringVal "" [r|"\\"|] `shouldParse` "\\"
+      parse stringVal "" [r|"escaped \n"|] `shouldParse` "escaped \n"
+      parse stringVal "" `shouldFailOn` [r|"\g"|]
+      parse stringVal "" `shouldFailOn` [r|"\  "|]
       -- Fix unicode escaping case
-      parse stringValue "" `shouldFailOn` [r|"\u0020"|]
+      parse stringVal "" `shouldFailOn` [r|"\u0020"|]
 
     it "lexes block strings" $ do
-      parse stringValue "" [r|"""Block string"""|] `shouldParse` "Block string"
+      parse stringVal "" [r|"""Block string"""|] `shouldParse` "Block string"
       parse
-        stringValue
+        stringVal
         ""
         [r|"""
         Hello,

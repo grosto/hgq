@@ -4,7 +4,6 @@ import Control.Applicative
   ( Alternative (..),
     pure,
     (*>),
-    (<$),
     (<$>),
     (<*),
     (<*>),
@@ -38,7 +37,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
   ( char,
     digitChar,
-    newline,
     printChar,
     space1,
     string,
@@ -127,15 +125,15 @@ zero = char '0' *> pure 0
 floatVal :: Parser Double
 floatVal = L.signed (pure ()) L.float
 
-stringValue :: Parser T.Text
-stringValue = blockString <|> singleLine
+stringVal :: Parser T.Text
+stringVal = lexeme (blockString <|> singleLine)
   where
     singleLine = char '"' *> (T.pack <$> manyTill stringChar (char '"'))
     stringChar = do
       x <- printChar
       case x of
         '\\' -> choice escapeChars
-        x -> pure x
+        x' -> pure x'
 
 escapeChars :: [Parser Char]
 escapeChars = map codeToReplacement escapeCharAndReplacements
