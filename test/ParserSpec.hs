@@ -102,19 +102,63 @@ spec = describe "Parser" $ do
                               ("gic", AST.VCNull)
                             ]
                       )
-  fcontext "types" $ do
+  context "types" $ do
     it "parses named type" $ do
-      parse gQLType "" "Int" `shouldParse` (AST.NamedType "Int")
+      parse gQLType "" "Int"
+        `shouldParse` (AST.GQLNamedType $ AST.NamedType "Int")
     it "parses list type" $ do
-      parse gQLType "" "[Int]" `shouldParse` (AST.ListType $ AST.NamedType "Int")
+      parse gQLType "" "[Int]"
+        `shouldParse` (AST.ListType $ AST.GQLNamedType $ AST.NamedType "Int")
     it "parses no-null type" $ do
-      parse gQLType "" "Int!" `shouldParse` (AST.NonNullType $ AST.NonNullNamedType "Int")
+      parse gQLType "" "Int!"
+        `shouldParse` (AST.NonNullType $ AST.NonNullNamedType "Int")
     it "parses no-null list type" $ do
       parse gQLType "" "[Int]!"
-        `shouldParse` (AST.NonNullType $ AST.NonNullListType $ AST.NamedType "Int")
+        `shouldParse` ( AST.NonNullType $
+                          AST.NonNullListType $
+                            AST.GQLNamedType $
+                              AST.NamedType "Int"
+                      )
     it "parses no-null list type with non-null named type inside" $ do
       parse gQLType "" "[Int!]!"
-        `shouldParse` (AST.NonNullType $ AST.NonNullListType $ AST.NonNullType $ AST.NonNullNamedType "Int")
+        `shouldParse` ( AST.NonNullType $
+                          AST.NonNullListType $
+                            AST.NonNullType $
+                              AST.NonNullNamedType "Int"
+                      )
+  context "fragments" $ do
+    it "parses fragment definition" $ do
+      parse
+        fragment
+        ""
+        [r|fragment friendFields on User {
+              id
+              name
+              profilePic(size: 50)
+            }|]
+        `shouldParse` ( AST.FragmentDefinition
+                          (AST.FragmentName "friendFields")
+                          (AST.TypeCondition (AST.NamedType "User"))
+                          []
+                          [ AST.SelectionField $ AST.Field "id" [] [],
+                            AST.SelectionField $ AST.Field "name" [] [],
+                            AST.SelectionField $
+                              AST.Field
+                                "profilePic"
+                                [AST.Argument "size" (AST.VInt 50)]
+                                []
+                          ]
+                      )
+    fit "fragment name cannot be on" $ do
+      parse
+        fragmentName
+        ""
+        `shouldFailOn` "on"
+      parse
+        fragmentName
+        ""
+        `shouldSucceedOn` "oneeeeeee"
+
   context "operations" $ do
     it "should parse operation with name" $ do
       parse
@@ -138,6 +182,17 @@ spec = describe "Parser" $ do
                           AST.Operation
                             AST.Query
                             (Just "like")
-                            [AST.VariableDefinition (AST.Variable "id") (AST.NamedType "Int")]
-                            $ [AST.SelectionField $ AST.Field "likeStory" [AST.Argument (AST.Name "id") (AST.VVariable (AST.Variable "id"))] []]
+                            [ AST.VariableDefinition
+                                (AST.Variable "id")
+                                (AST.GQLNamedType $ AST.NamedType "Int")
+                            ]
+                            $ [ AST.SelectionField $
+                                  AST.Field
+                                    "likeStory"
+                                    [ AST.Argument
+                                        (AST.Name "id")
+                                        (AST.VVariable (AST.Variable "id"))
+                                    ]
+                                    []
+                              ]
                       )

@@ -9,9 +9,9 @@ import Control.Applicative
     (<*>),
   )
 import Control.Monad ((>>))
-import Data.Bool ((||))
+import Data.Bool (not, (||))
 import Data.Char (Char, isAsciiLower, isAsciiUpper)
-import Data.Eq ((==))
+import Data.Eq ((/=), (==))
 import Data.Foldable (foldr')
 import Data.Function (($), (.))
 import Data.Functor (($>))
@@ -101,7 +101,10 @@ squareBrackets = between (symbol "[") (symbol "]")
 
 -- Name
 name :: Parser T.Text
-name = lexeme $ T.cons <$> nameStart <*> (T.pack <$> many (letter <|> digitChar <|> char '_'))
+name = lexeme $ T.cons <$> nameStart <*> (T.pack <$> many allowedNameChars)
+
+allowedNameChars :: Parser Char
+allowedNameChars = letter <|> digitChar <|> char '_'
 
 letter :: Parser Char
 letter = satisfy w
@@ -159,19 +162,18 @@ formatBlockString :: T.Text -> T.Text
 formatBlockString x =
   case T.lines x of
     [] -> ""
-    (z : []) -> z
-    (firstLine : xs) ->
+    (firstLine : []) -> firstLine
+    (firstLine : tail) ->
       -- We have to drop last extra \n from unlines
       (T.dropEnd 1)
         . T.unlines
         . removeLastLineIfItsOnlySpace
         . removeFirstLineIfItsOnlySpace firstLine
-        $ formatCommonIndent xs
+        $ formatCommonIndent tail
   where
-    removeFirstLineIfItsOnlySpace z xs = if isOnlySpace z then xs else z : xs
+    removeFirstLineIfItsOnlySpace x xs = if isOnlySpace x then xs else x : xs
     removeLastLineIfItsOnlySpace xs = if isOnlySpace $ last xs then init xs else xs
-    -- Can I make this more efficient?
-    isOnlySpace = T.all (== ' ')
+    isOnlySpace = not . T.any (/= ' ')
     formatCommonIndent xs = case calculateCommonIndent xs of
       Nothing -> xs
       Just commonIndent -> map (T.drop commonIndent) xs

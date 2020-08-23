@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -15,8 +15,11 @@ import GHC.Float (Double)
 import GHC.Num (Integer)
 import GHC.Show (Show)
 
-newtype Name = Name {unName :: T.Text}
-  deriving (Eq, Ord, Show, IsString)
+newtype Name = Name
+  {unName :: T.Text}
+  deriving
+    (Eq, Ord, Show, IsString)
+    via T.Text
 
 type Description = T.Text
 
@@ -90,8 +93,39 @@ data ValueConst
   deriving (Show, Eq)
 
 -- Types
-data GQLType = NamedType Name | ListType GQLType | NonNullType NonNullGQLType
+data GQLType = GQLNamedType NamedType | ListType GQLType | NonNullType NonNullGQLType
   deriving (Show, Eq)
+
+newtype NamedType = NamedType Name
+  deriving
+    (Eq, Ord, Show, IsString)
+    via Name
 
 data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
   deriving (Show, Eq)
+
+-- Fragments
+data FragmentDefinition = FragmentDefinition
+  { fName :: FragmentName,
+    fTypeCondition :: TypeCondition,
+    fDirectives :: [Directive],
+    fSelectionSet :: SelectionSet
+  }
+  deriving
+    (Eq, Show)
+
+newtype FragmentName = FragmentName {unFragmentName :: T.Text}
+  deriving
+    (Eq, Ord, Show, IsString)
+    via T.Text
+
+newtype TypeCondition = TypeCondition NamedType
+  deriving
+    (Eq, Ord, Show, IsString)
+    via NamedType
+
+-- Directives
+
+data Directive = Directive
+  deriving
+    (Eq, Show)

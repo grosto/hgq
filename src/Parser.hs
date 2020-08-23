@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -6,6 +5,7 @@ module Parser where
 
 import qualified AST
 import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
+import Control.Monad.Fail (fail)
 import Data.Bool (Bool (..))
 import Data.Function (($))
 import qualified Data.Map.Strict as Map
@@ -14,7 +14,7 @@ import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
 
 document :: Parser AST.Document
-document = AST.DocumentOperation <$> operation
+document = Lexer.spaceConsumer *> (AST.DocumentOperation <$> operation)
 
 operationType :: Parser AST.OperationType
 operationType =
@@ -38,7 +38,7 @@ field :: Parser AST.Field
 field = AST.Field <$> name <*> arguments <*> (selectionSet <|> pure [])
 
 name :: Parser AST.Name
-name = AST.Name <$> Lexer.name
+name = AST.Name <$> Lexer.name <?> "Name"
 
 selectionSet :: Parser AST.SelectionSet
 selectionSet = Lexer.brackets $ some selection
@@ -92,9 +92,14 @@ boolVal = True <$ Lexer.symbol "true" <|> False <$ Lexer.symbol "false"
 
 -- Types
 gQLType :: Parser AST.GQLType
-gQLType = (try (AST.NonNullType <$> nonNullType)) <|> namedType <|> listType
+gQLType =
+  try nonNullableTypes
+    <|> (AST.GQLNamedType <$> namedType)
+    <|> listType
+  where
+    nonNullableTypes = AST.NonNullType <$> nonNullType
 
-namedType :: Parser AST.GQLType
+namedType :: Parser AST.NamedType
 namedType = AST.NamedType <$> name
 
 listType :: Parser AST.GQLType
@@ -108,3 +113,20 @@ nonNullNamedType = AST.NonNullNamedType <$> (name <* Lexer.bang)
 
 nonNullListType :: Parser AST.NonNullGQLType
 nonNullListType = AST.NonNullListType <$> Lexer.squareBrackets gQLType <* Lexer.bang
+
+-- Fragments
+fragment :: Parser AST.FragmentDefinition
+fragment =
+  AST.FragmentDefinition
+    <$> (Lexer.symbol "fragment" *> fragmentName)
+      <*> typeCondition
+      <*> (pure [])
+      <*> selectionSet
+
+fragmentName :: Parser AST.FragmentName
+fragmentName =
+  lookAhead (Lexer.symbol "on" *> Lexer.allowedNameChars)
+    *> (AST.FragmentName <$> Lexer.name)
+
+typeCondition :: Parser AST.TypeCondition
+typeCondition = AST.TypeCondition <$> (Lexer.symbol "on" *> namedType)
