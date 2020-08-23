@@ -92,7 +92,19 @@ boolVal = True <$ Lexer.symbol "true" <|> False <$ Lexer.symbol "false"
 
 -- Types
 gQLType :: Parser AST.GQLType
-gQLType = namedType
+gQLType = (try (AST.NonNullType <$> nonNullType)) <|> namedType <|> listType
 
 namedType :: Parser AST.GQLType
 namedType = AST.NamedType <$> name
+
+listType :: Parser AST.GQLType
+listType = AST.ListType <$> Lexer.squareBrackets gQLType
+
+nonNullType :: Parser AST.NonNullGQLType
+nonNullType = (nonNullNamedType <|> nonNullListType)
+
+nonNullNamedType :: Parser AST.NonNullGQLType
+nonNullNamedType = AST.NonNullNamedType <$> (name <* Lexer.bang)
+
+nonNullListType :: Parser AST.NonNullGQLType
+nonNullListType = AST.NonNullListType <$> Lexer.squareBrackets gQLType <* Lexer.bang

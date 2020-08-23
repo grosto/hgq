@@ -90,5 +90,8 @@ data ValueConst
   deriving (Show, Eq)
 
 -- Types
-data GQLType = NamedType Name
+data GQLType = NamedType Name | ListType GQLType | NonNullType NonNullGQLType
+  deriving (Show, Eq)
+
+data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
   deriving (Show, Eq)

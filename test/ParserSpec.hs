@@ -90,7 +90,10 @@ spec = describe "Parser" $ do
                           ]
                       )
     it "parses Object Value Const" $ do
-      parse valueConst "" "{ gec: \"gec\", goc: 100, gac: true, gic: null }"
+      parse
+        valueConst
+        ""
+        "{ gec: \"gec\", goc: 100, gac: true, gic: null }"
         `shouldParse` ( AST.VCObject $
                           Map.fromList $
                             [ ("gec", AST.VCString "gec"),
@@ -99,6 +102,19 @@ spec = describe "Parser" $ do
                               ("gic", AST.VCNull)
                             ]
                       )
+  fcontext "types" $ do
+    it "parses named type" $ do
+      parse gQLType "" "Int" `shouldParse` (AST.NamedType "Int")
+    it "parses list type" $ do
+      parse gQLType "" "[Int]" `shouldParse` (AST.ListType $ AST.NamedType "Int")
+    it "parses no-null type" $ do
+      parse gQLType "" "Int!" `shouldParse` (AST.NonNullType $ AST.NonNullNamedType "Int")
+    it "parses no-null list type" $ do
+      parse gQLType "" "[Int]!"
+        `shouldParse` (AST.NonNullType $ AST.NonNullListType $ AST.NamedType "Int")
+    it "parses no-null list type with non-null named type inside" $ do
+      parse gQLType "" "[Int!]!"
+        `shouldParse` (AST.NonNullType $ AST.NonNullListType $ AST.NonNullType $ AST.NonNullNamedType "Int")
   context "operations" $ do
     it "should parse operation with name" $ do
       parse
