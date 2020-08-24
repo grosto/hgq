@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 737a168999bbd53b3379d296536fcecf3f66aa77ae64d6e0d09aff2e9365538a
+-- hash: 3e1d9b348b0f02b86412bcafa4534f8028bda7c451b1a218ae03f0cde1ce2663
 
 name:           graphql-haskell
 version:        0.1.0.0
@@ -79,5 +79,23 @@ test-suite graphql-haskell-test
     , hspec-megaparsec
     , megaparsec
     , raw-strings-qq
+    , text
+  default-language: Haskell2010
+
+benchmark graphql-haskell-benchmarks
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      Paths_graphql_haskell
+  hs-source-dirs:
+      bench
+  default-extensions: OverloadedStrings, LambdaCase, TypeFamilies, NoImplicitPrelude
+  ghc-options: -Wall -fno-warn-name-shadowing -Wcompat -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , criterion
+    , graphql-haskell
+    , megaparsec
     , text
   default-language: Haskell2010
