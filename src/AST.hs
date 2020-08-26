@@ -124,7 +124,15 @@ newtype TypeCondition = TypeCondition NamedType
     (Eq, Ord, Show, IsString)
     via NamedType
 
+data FragmentSpread = FragmentSpread
+  { fsName :: FragmentName,
+    directives :: Directives
+  }
+  deriving
+    (Eq, Show)
+
 -- Directives
+type Directives = [Directive]
 
 data Directive = Directive
   deriving

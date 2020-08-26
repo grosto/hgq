@@ -149,15 +149,33 @@ spec = describe "Parser" $ do
                                 []
                           ]
                       )
-    fit "fragment name cannot be on" $ do
+    it "fragment name cannot be on" $ do
       parse
         fragmentName
         ""
-        `shouldFailOn` "on"
+        `shouldFailOn` "on  "
+      parse
+        fragmentName
+        ""
+        `shouldFailOn` "on  e"
       parse
         fragmentName
         ""
         `shouldSucceedOn` "oneeeeeee"
+      parse
+        fragmentName
+        ""
+        `shouldSucceedOn` "name"
+
+    it "parses fragment spread" $ do
+      parse
+        fragmentSpread
+        ""
+        "...friendFields"
+        `shouldParse` ( AST.FragmentSpread
+                          (AST.FragmentName "friendFiels")
+                          []
+                      )
 
   context "operations" $ do
     it "should parse operation with name" $ do

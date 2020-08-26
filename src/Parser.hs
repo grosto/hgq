@@ -5,13 +5,13 @@ module Parser where
 
 import qualified AST
 import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
-import Control.Monad.Fail (fail)
 import Data.Bool (Bool (..))
 import Data.Function (($))
 import qualified Data.Map.Strict as Map
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
+import Text.Megaparsec.Char (string)
 
 document :: Parser AST.Document
 document = Lexer.spaceConsumer *> (AST.DocumentOperation <$> operation)
@@ -81,7 +81,7 @@ listG :: Parser a -> Parser [a]
 listG val = Lexer.squareBrackets $ many val
 
 objectG :: Parser a -> Parser (Map.Map AST.Name a)
--- I can write this more efficiently for sure
+-- I can for sure write this more efficiently
 objectG val = Lexer.brackets $ Map.fromList <$> (many $ objectFieldG val)
 
 objectFieldG :: Parser a -> Parser (AST.Name, a)
@@ -124,9 +124,16 @@ fragment =
       <*> selectionSet
 
 fragmentName :: Parser AST.FragmentName
-fragmentName =
-  lookAhead (Lexer.symbol "on" *> Lexer.allowedNameChars)
-    *> (AST.FragmentName <$> Lexer.name)
+fragmentName = AST.FragmentName <$> (keywordGuard *> Lexer.name)
+  where
+    keywordGuard = notFollowedBy (string "on" *> notFollowedBy Lexer.allowedNameChars)
 
 typeCondition :: Parser AST.TypeCondition
 typeCondition = AST.TypeCondition <$> (Lexer.symbol "on" *> namedType)
+
+fragmentSpread :: Parser AST.FragmentSpread
+fragmentSpread = AST.FragmentSpread <$> (Lexer.threedots *> fragmentName) <*> directives
+
+-- Directives
+directives :: Parser AST.Directives
+directives = pure []
