@@ -126,6 +126,24 @@ spec = describe "Parser" $ do
                             AST.NonNullType $
                               AST.NonNullNamedType "Int"
                       )
+  context "directive" $ do
+    it "should parse directives without arguments" $ do
+      parse
+        directives
+        ""
+        [r|@super @power|]
+        `shouldParse` [ AST.Directive (AST.Name "super") [],
+                        AST.Directive (AST.Name "power") []
+                      ]
+    it "should parse directives with arguments" $ do
+      parse
+        directives
+        ""
+        [r|@addExternalFields(source: "profiles") @excludeField(name: "photo")|]
+        `shouldParse` [ AST.Directive (AST.Name "addExternalFields") [AST.Argument "source" (AST.VString "profiles")],
+                        AST.Directive (AST.Name "excludeField") [AST.Argument "name" (AST.VString "photo")]
+                      ]
+
   context "fragments" $ do
     it "parses fragment definition" $ do
       parse
@@ -173,11 +191,32 @@ spec = describe "Parser" $ do
         ""
         "...friendFields"
         `shouldParse` ( AST.FragmentSpread
-                          (AST.FragmentName "friendFiels")
+                          (AST.FragmentName "friendFields")
                           []
                       )
-
-  context "operations" $ do
+  context "selectionSet" $ do
+    it "should parse fragment spreads" $
+      parse
+        selectionSet
+        ""
+        [r|{
+            friends {
+              ...friendFields
+            }
+            ...profilePhoto
+          }
+        |]
+        `shouldParse` [ AST.SelectionField $
+                          AST.Field
+                            (AST.Name "friends")
+                            []
+                            [ AST.SelectionFragmentSpread $
+                                AST.FragmentSpread (AST.FragmentName "friendFields") []
+                            ],
+                        AST.SelectionFragmentSpread $
+                          AST.FragmentSpread (AST.FragmentName "profilePhoto") []
+                      ]
+  context "documents" $ do
     it "should parse operation with name" $ do
       parse
         document
@@ -186,7 +225,7 @@ spec = describe "Parser" $ do
           like
          } |]
         `shouldParse` ( AST.DocumentOperation $
-                          AST.Operation AST.Mutation (Just "like") [] $
+                          AST.Operation AST.Mutation (Just "like") [] [] $
                             [AST.SelectionField $ AST.Field "like" [] []]
                       )
     it "should parse operation with arguments" $ do
@@ -204,6 +243,7 @@ spec = describe "Parser" $ do
                                 (AST.Variable "id")
                                 (AST.GQLNamedType $ AST.NamedType "Int")
                             ]
+                            []
                             $ [ AST.SelectionField $
                                   AST.Field
                                     "likeStory"
@@ -213,4 +253,57 @@ spec = describe "Parser" $ do
                                     ]
                                     []
                               ]
+                      )
+    it "should parse operation with directives" $ do
+      parse
+        document
+        ""
+        [r|query like($id: Int) @excludeField(name: "photo") @addExternalFields(source: "profiles") { 
+          likeStory (id: $id)
+          } |]
+        `shouldParse` ( AST.DocumentOperation $
+                          AST.Operation
+                            AST.Query
+                            (Just "like")
+                            [ AST.VariableDefinition
+                                (AST.Variable "id")
+                                (AST.GQLNamedType $ AST.NamedType "Int")
+                            ]
+                            [ AST.Directive
+                                (AST.Name "excludeField")
+                                [AST.Argument "name" (AST.VString "photo")],
+                              AST.Directive (AST.Name "addExternalFields") [AST.Argument "source" (AST.VString "profiles")]
+                            ]
+                            $ [ AST.SelectionField $
+                                  AST.Field
+                                    "likeStory"
+                                    [ AST.Argument
+                                        (AST.Name "id")
+                                        (AST.VVariable (AST.Variable "id"))
+                                    ]
+                                    []
+                              ]
+                      )
+    it "should parse top level fragment definition" $ do
+      parse
+        document
+        ""
+        [r|fragment friendFields on User {
+          id
+          name
+          profilePic(size: 50)
+        } |]
+        `shouldParse` ( AST.DocumentFragment $
+                          AST.FragmentDefinition
+                            (AST.FragmentName "friendFields")
+                            (AST.TypeCondition (AST.NamedType "User"))
+                            []
+                            [ AST.SelectionField $ AST.Field "id" [] [],
+                              AST.SelectionField $ AST.Field "name" [] [],
+                              AST.SelectionField $
+                                AST.Field
+                                  "profilePic"
+                                  [AST.Argument "size" (AST.VInt 50)]
+                                  []
+                            ]
                       )

@@ -26,7 +26,7 @@ data ScalarTypeDefinition = ScalarTypeDefinition
     sTDName :: Name
   }
 
-data Document = DocumentOperation Operation
+data Document = DocumentOperation Operation | DocumentFragment FragmentDefinition
   deriving (Show, Eq)
 
 data OperationType = Query | Mutation | Subscription
@@ -36,6 +36,7 @@ data Operation = Operation
   { oOperationType :: OperationType,
     oName :: Maybe Name,
     oVariableDefinitons :: [VariableDefinition],
+    oDirectives :: Directives,
     oSelectionSet :: SelectionSet
   }
   deriving (Show, Eq)
@@ -53,7 +54,7 @@ newtype Variable = Variable
 
 type SelectionSet = [Selection]
 
-data Selection = SelectionField Field
+data Selection = SelectionField Field | SelectionFragmentSpread FragmentSpread
   deriving (Show, Eq)
 
 data Field = Field
@@ -106,7 +107,7 @@ data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
 data FragmentDefinition = FragmentDefinition
   { fName :: FragmentName,
     fTypeCondition :: TypeCondition,
-    fDirectives :: [Directive],
+    fDirectives :: Directives,
     fSelectionSet :: SelectionSet
   }
   deriving
@@ -133,5 +134,8 @@ data FragmentSpread = FragmentSpread
 type Directives = [Directive]
 
 data Directive = Directive
+  { dName :: Name,
+    dArguments :: [Argument]
+  }
   deriving
     (Eq, Show)

@@ -11,7 +11,9 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (string)
 
 document :: Parser AST.Document
-document = Lexer.spaceConsumer *> (AST.DocumentOperation <$> operation)
+document =
+  Lexer.spaceConsumer
+    *> (AST.DocumentOperation <$> operation <|> AST.DocumentFragment <$> fragment)
 
 operationType :: Parser AST.OperationType
 operationType =
@@ -20,7 +22,7 @@ operationType =
     <|> AST.Subscription <$ Lexer.symbol "subscription"
 
 operation :: Parser AST.Operation
-operation = AST.Operation <$> operationType <*> optional name <*> variableDefinitions <*> selectionSet
+operation = AST.Operation <$> operationType <*> optional name <*> variableDefinitions <*> directives <*> selectionSet
 
 variableDefinitions :: Parser [AST.VariableDefinition]
 variableDefinitions = (Lexer.parens $ some variableDefinition) <|> pure []
@@ -41,7 +43,7 @@ selectionSet :: Parser AST.SelectionSet
 selectionSet = Lexer.brackets $ some selection
 
 selection :: Parser AST.Selection
-selection = AST.SelectionField <$> field
+selection = AST.SelectionField <$> field <|> AST.SelectionFragmentSpread <$> fragmentSpread
 
 arguments :: Parser [AST.Argument]
 arguments = (Lexer.parens $ some argument) <|> pure []
@@ -133,4 +135,7 @@ fragmentSpread = AST.FragmentSpread <$> (Lexer.threedots *> fragmentName) <*> di
 
 -- Directives
 directives :: Parser AST.Directives
-directives = pure []
+directives = many directive
+
+directive :: Parser AST.Directive
+directive = AST.Directive <$> (Lexer.atSymbol *> name) <*> arguments
