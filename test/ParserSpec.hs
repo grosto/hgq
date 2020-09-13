@@ -126,6 +126,33 @@ spec = describe "Parser" $ do
                             AST.NonNullType $
                               AST.NonNullNamedType "Int"
                       )
+  context "field" $ do
+    it "should parse field with alias" $ do
+      parse
+        field
+        ""
+        "smallPic: profilePic(size: 64)"
+        `shouldParse` AST.Field
+          (AST.Name "profilePic")
+          [ AST.Argument
+              (AST.Name "size")
+              (AST.VInt 64)
+          ]
+          []
+          (Just "smallPic")
+    it "should parse field without alias" $ do
+      parse
+        field
+        ""
+        "profilePic(size: 64)"
+        `shouldParse` AST.Field
+          (AST.Name "profilePic")
+          [ AST.Argument
+              (AST.Name "size")
+              (AST.VInt 64)
+          ]
+          []
+          Nothing
   context "directive" $ do
     it "should parse directives without arguments" $ do
       parse
@@ -158,13 +185,14 @@ spec = describe "Parser" $ do
                           (AST.FragmentName "friendFields")
                           (AST.TypeCondition (AST.NamedType "User"))
                           []
-                          [ AST.SelectionField $ AST.Field "id" [] [],
-                            AST.SelectionField $ AST.Field "name" [] [],
+                          [ AST.SelectionField $ AST.Field "id" [] [] Nothing,
+                            AST.SelectionField $ AST.Field "name" [] [] Nothing,
                             AST.SelectionField $
                               AST.Field
                                 "profilePic"
                                 [AST.Argument "size" (AST.VInt 50)]
                                 []
+                                Nothing
                           ]
                       )
     it "fragment name cannot be on" $ do
@@ -212,9 +240,57 @@ spec = describe "Parser" $ do
                             []
                             [ AST.SelectionFragmentSpread $
                                 AST.FragmentSpread (AST.FragmentName "friendFields") []
-                            ],
+                            ]
+                            Nothing,
                         AST.SelectionFragmentSpread $
                           AST.FragmentSpread (AST.FragmentName "profilePhoto") []
+                      ]
+    it "should parse inline fragments without type condition" $
+      parse
+        selectionSet
+        ""
+        [r|{
+          ... @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+        |]
+        `shouldParse` [ AST.SelectionInlineFragment $
+                          AST.InlineFragment
+                            Nothing
+                            [ AST.Directive
+                                (AST.Name "include")
+                                [ AST.Argument
+                                    (AST.Name "if")
+                                    (AST.VVariable $ AST.Variable "expandedInfo")
+                                ]
+                            ]
+                            [ AST.SelectionField $ AST.Field (AST.Name "firstName") [] [] Nothing,
+                              AST.SelectionField $ AST.Field (AST.Name "lastName") [] [] Nothing,
+                              AST.SelectionField $ AST.Field (AST.Name "birthday") [] [] Nothing
+                            ]
+                      ]
+    it "should parse inline fragments with type condition" $
+      parse
+        selectionSet
+        ""
+        [r|{
+          ... on User {
+            firstName
+            lastName
+            birthday
+          }
+        }|]
+        `shouldParse` [ AST.SelectionInlineFragment $
+                          AST.InlineFragment
+                            (Just $ AST.TypeCondition $ AST.NamedType "User")
+                            []
+                            [ AST.SelectionField $ AST.Field (AST.Name "firstName") [] [] Nothing,
+                              AST.SelectionField $ AST.Field (AST.Name "lastName") [] [] Nothing,
+                              AST.SelectionField $ AST.Field (AST.Name "birthday") [] [] Nothing
+                            ]
                       ]
   context "documents" $ do
     it "should parse operation with name" $ do
@@ -226,7 +302,7 @@ spec = describe "Parser" $ do
          } |]
         `shouldParse` ( AST.DocumentOperation $
                           AST.Operation AST.Mutation (Just "like") [] [] $
-                            [AST.SelectionField $ AST.Field "like" [] []]
+                            [AST.SelectionField $ AST.Field "like" [] [] Nothing]
                       )
     it "should parse operation with arguments" $ do
       parse
@@ -252,6 +328,7 @@ spec = describe "Parser" $ do
                                         (AST.VVariable (AST.Variable "id"))
                                     ]
                                     []
+                                    Nothing
                               ]
                       )
     it "should parse operation with directives" $ do
@@ -282,6 +359,7 @@ spec = describe "Parser" $ do
                                         (AST.VVariable (AST.Variable "id"))
                                     ]
                                     []
+                                    Nothing
                               ]
                       )
     it "should parse top level fragment definition" $ do
@@ -298,12 +376,13 @@ spec = describe "Parser" $ do
                             (AST.FragmentName "friendFields")
                             (AST.TypeCondition (AST.NamedType "User"))
                             []
-                            [ AST.SelectionField $ AST.Field "id" [] [],
-                              AST.SelectionField $ AST.Field "name" [] [],
+                            [ AST.SelectionField $ AST.Field "id" [] [] Nothing,
+                              AST.SelectionField $ AST.Field "name" [] [] Nothing,
                               AST.SelectionField $
                                 AST.Field
                                   "profilePic"
                                   [AST.Argument "size" (AST.VInt 50)]
                                   []
+                                  Nothing
                             ]
                       )

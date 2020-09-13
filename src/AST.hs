@@ -54,13 +54,14 @@ newtype Variable = Variable
 
 type SelectionSet = [Selection]
 
-data Selection = SelectionField Field | SelectionFragmentSpread FragmentSpread
+data Selection = SelectionField Field | SelectionFragmentSpread FragmentSpread | SelectionInlineFragment InlineFragment
   deriving (Show, Eq)
 
 data Field = Field
   { fname :: Name,
     fArguments :: [Argument],
-    fselectionSet :: SelectionSet
+    fselectionSet :: SelectionSet,
+    alias :: Maybe Name
   }
   deriving (Show, Eq)
 
@@ -109,6 +110,14 @@ data FragmentDefinition = FragmentDefinition
     fTypeCondition :: TypeCondition,
     fDirectives :: Directives,
     fSelectionSet :: SelectionSet
+  }
+  deriving
+    (Eq, Show)
+
+data InlineFragment = InlineFragment
+  { iTypeCondition :: Maybe TypeCondition,
+    iDirectives :: Directives,
+    iSelectionSet :: SelectionSet
   }
   deriving
     (Eq, Show)

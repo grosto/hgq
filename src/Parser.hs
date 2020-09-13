@@ -5,6 +5,7 @@ import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
 import Data.Bool (Bool (..))
 import Data.Function (($))
 import qualified Data.Map.Strict as Map
+import Data.Maybe (Maybe (..))
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
@@ -34,7 +35,21 @@ variable :: Parser AST.Variable
 variable = AST.Variable <$> (Lexer.dollarSign *> name)
 
 field :: Parser AST.Field
-field = AST.Field <$> name <*> arguments <*> (selectionSet <|> pure [])
+field = createField <$> nameWithPossibleAlias <*> arguments <*> (selectionSet <|> pure [])
+  where
+    createField =
+      ( \(parsedName, parsedAlias) parsedArguments parsedSelectionSet ->
+          AST.Field
+            parsedName
+            parsedArguments
+            parsedSelectionSet
+            parsedAlias
+      )
+    nameWithPossibleAlias :: Parser (AST.Name, Maybe AST.Name)
+    nameWithPossibleAlias = mapNameAndAlias <$> name <*> (optional $ Lexer.colon *> name)
+    mapNameAndAlias a b = case b of
+      Just parsedName -> (parsedName, Just a)
+      Nothing -> (a, b)
 
 name :: Parser AST.Name
 name = AST.Name <$> Lexer.name <?> "Name"
@@ -43,7 +58,15 @@ selectionSet :: Parser AST.SelectionSet
 selectionSet = Lexer.brackets $ some selection
 
 selection :: Parser AST.Selection
-selection = AST.SelectionField <$> field <|> AST.SelectionFragmentSpread <$> fragmentSpread
+selection =
+  choice
+    [ AST.SelectionField <$> field,
+      AST.SelectionFragmentSpread <$> try fragmentSpread,
+      AST.SelectionInlineFragment <$> inlineFragment
+    ]
+  where
+    inlineFragment :: Parser AST.InlineFragment
+    inlineFragment = AST.InlineFragment <$> (Lexer.threedots *> (optional $ typeCondition)) <*> directives <*> selectionSet
 
 arguments :: Parser [AST.Argument]
 arguments = (Lexer.parens $ some argument) <|> pure []

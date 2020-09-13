@@ -165,13 +165,12 @@ formatBlockString x =
     (firstLine : []) -> firstLine
     (firstLine : tail) ->
       -- We have to drop last extra \n from unlines
-      (T.dropEnd 1)
-        . T.unlines
+      T.intercalate ("\n")
         . removeLastLineIfItsOnlySpace
         . removeFirstLineIfItsOnlySpace firstLine
         $ formatCommonIndent tail
   where
-    removeFirstLineIfItsOnlySpace x xs = if isOnlySpace x then xs else x : xs
+    removeFirstLineIfItsOnlySpace firstLine xs = if isOnlySpace firstLine then xs else firstLine : xs
     removeLastLineIfItsOnlySpace xs = if isOnlySpace $ last xs then init xs else xs
     isOnlySpace = not . T.any (/= ' ')
     formatCommonIndent xs = case calculateCommonIndent xs of
