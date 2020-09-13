@@ -72,6 +72,9 @@ symbol = L.symbol spaceConsumer
 dollarSign :: Parser T.Text
 dollarSign = symbol "$"
 
+and :: Parser T.Text
+and = symbol "&"
+
 bang :: Parser T.Text
 bang = symbol "!"
 

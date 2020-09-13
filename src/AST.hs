@@ -19,12 +19,11 @@ newtype Name = Name
     (Eq, Ord, Show, IsString)
     via T.Text
 
-type Description = T.Text
-
-data ScalarTypeDefinition = ScalarTypeDefinition
-  { description :: Description,
-    sTDName :: Name
-  }
+newtype Description = Description
+  {unDescription :: T.Text}
+  deriving
+    (Eq, Ord, Show, IsString)
+    via T.Text
 
 data Document = DocumentOperation Operation | DocumentFragment FragmentDefinition
   deriving (Show, Eq)
@@ -92,18 +91,6 @@ data ValueConst
   | VCObject (Map.Map Name ValueConst)
   deriving (Show, Eq)
 
--- Types
-data GQLType = GQLNamedType NamedType | ListType GQLType | NonNullType NonNullGQLType
-  deriving (Show, Eq)
-
-newtype NamedType = NamedType Name
-  deriving
-    (Eq, Ord, Show, IsString)
-    via Name
-
-data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
-  deriving (Show, Eq)
-
 -- Fragments
 data FragmentDefinition = FragmentDefinition
   { fName :: FragmentName,
@@ -134,7 +121,7 @@ newtype TypeCondition = TypeCondition NamedType
 
 data FragmentSpread = FragmentSpread
   { fsName :: FragmentName,
-    directives :: Directives
+    fsDirectives :: Directives
   }
   deriving
     (Eq, Show)
@@ -148,3 +135,86 @@ data Directive = Directive
   }
   deriving
     (Eq, Show)
+
+-- type references
+data GQLType = GQLNamedType NamedType | ListType GQLType | NonNullType NonNullGQLType
+  deriving (Show, Eq)
+
+newtype NamedType = NamedType Name
+  deriving
+    (Eq, Ord, Show, IsString)
+    via Name
+
+data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
+  deriving (Show, Eq)
+
+-- type system
+data SchemaDefinition = SchemaDefinition
+  { sDescription :: Maybe Description,
+    sDirectives :: Directives,
+    sRootOperationTypeDefinitions :: [RootOperationTypeDefinition]
+  }
+  deriving (Show, Eq)
+
+data RootOperationTypeDefinition = RootOperationTypeDefinition
+  { rOperationType :: OperationType,
+    rType :: NamedType
+  }
+  deriving (Show, Eq)
+
+data TypeDefinition
+  = TypeDefinitionScalar ScalarTypeDefinition
+  | TypeDefinitionObject ObjectTypeDefinition
+  | TypeDefinitionInterface InterfaceTypeDefinition
+  deriving (Show, Eq)
+
+data ScalarTypeDefinition = ScalarTypeDefinition
+  { stdescription :: Maybe Description,
+    stName :: Name,
+    stDirectives :: Directives
+  }
+  deriving (Show, Eq)
+
+data ObjectTypeDefinition = ObjectTypeDefinition
+  { otDescription :: Maybe Description,
+    otName :: Name,
+    otImplementsInterfaces :: ImplementsInterfaces,
+    otDirectives :: Directives,
+    otFieldsDefinition :: FieldsDefinition
+  }
+  deriving (Show, Eq)
+
+type ImplementsInterfaces = [NamedType]
+
+data InterfaceTypeDefinition = InterfaceTypeDefinition
+  { itDescription :: Maybe Description,
+    itName :: Name,
+    itImplementsInterfaces :: ImplementsInterfaces,
+    itDirectives :: Directives,
+    itFieldsDefinitions :: FieldsDefinition
+  }
+  deriving (Show, Eq)
+
+type FieldsDefinition = [FieldDefinition]
+
+data FieldDefinition = FieldDefinition
+  { fdDescription :: Maybe Description,
+    fdName :: Name,
+    fdArgument :: ArgumentsDefinition,
+    fdType :: GQLType,
+    fdDirectives :: Directives
+  }
+  deriving (Show, Eq)
+
+type ArgumentsDefinition = [InputValueDefinition]
+
+type DefaultValue = Maybe Value
+
+data InputValueDefinition = InputValueDefinition
+  { adDescription :: Maybe Description,
+    adName :: Name,
+    adType :: GQLType,
+    adDefaultValue :: DefaultValue,
+    adDirectives :: Directives
+  }
+  deriving (Show, Eq)

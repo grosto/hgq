@@ -11,6 +11,12 @@ import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (string)
 
+name :: Parser AST.Name
+name = AST.Name <$> Lexer.name <?> "Name"
+
+description :: Parser AST.Description
+description = AST.Description <$> Lexer.stringVal <?> "Description"
+
 document :: Parser AST.Document
 document =
   Lexer.spaceConsumer
@@ -50,9 +56,6 @@ field = createField <$> nameWithPossibleAlias <*> arguments <*> (selectionSet <|
     mapNameAndAlias a b = case b of
       Just parsedName -> (parsedName, Just a)
       Nothing -> (a, b)
-
-name :: Parser AST.Name
-name = AST.Name <$> Lexer.name <?> "Name"
 
 selectionSet :: Parser AST.SelectionSet
 selectionSet = Lexer.brackets $ some selection
@@ -112,30 +115,6 @@ objectFieldG val = (,) <$> name <* Lexer.colon <*> val
 boolVal :: Parser Bool
 boolVal = True <$ Lexer.symbol "true" <|> False <$ Lexer.symbol "false"
 
--- Types
-gQLType :: Parser AST.GQLType
-gQLType =
-  try nonNullableTypes
-    <|> (AST.GQLNamedType <$> namedType)
-    <|> listType
-  where
-    nonNullableTypes = AST.NonNullType <$> nonNullType
-
-namedType :: Parser AST.NamedType
-namedType = AST.NamedType <$> name
-
-listType :: Parser AST.GQLType
-listType = AST.ListType <$> Lexer.squareBrackets gQLType
-
-nonNullType :: Parser AST.NonNullGQLType
-nonNullType = (nonNullNamedType <|> nonNullListType)
-
-nonNullNamedType :: Parser AST.NonNullGQLType
-nonNullNamedType = AST.NonNullNamedType <$> (name <* Lexer.bang)
-
-nonNullListType :: Parser AST.NonNullGQLType
-nonNullListType = AST.NonNullListType <$> Lexer.squareBrackets gQLType <* Lexer.bang
-
 -- Fragments
 fragment :: Parser AST.FragmentDefinition
 fragment =
@@ -162,3 +141,114 @@ directives = many directive
 
 directive :: Parser AST.Directive
 directive = AST.Directive <$> (Lexer.atSymbol *> name) <*> arguments
+
+-- Type references
+gQLType :: Parser AST.GQLType
+gQLType =
+  try nonNullableTypes
+    <|> (AST.GQLNamedType <$> namedType)
+    <|> listType
+  where
+    nonNullableTypes = AST.NonNullType <$> nonNullType
+
+namedType :: Parser AST.NamedType
+namedType = AST.NamedType <$> name
+
+listType :: Parser AST.GQLType
+listType = AST.ListType <$> Lexer.squareBrackets gQLType
+
+nonNullType :: Parser AST.NonNullGQLType
+nonNullType = (nonNullNamedType <|> nonNullListType)
+
+nonNullNamedType :: Parser AST.NonNullGQLType
+nonNullNamedType = AST.NonNullNamedType <$> (name <* Lexer.bang)
+
+nonNullListType :: Parser AST.NonNullGQLType
+nonNullListType = AST.NonNullListType <$> Lexer.squareBrackets gQLType <* Lexer.bang
+
+-- Type system
+
+schemaDefinition :: Parser AST.SchemaDefinition
+schemaDefinition =
+  AST.SchemaDefinition
+    <$> optional description
+      <*> (Lexer.symbol "schema" *> directives)
+      <*> (Lexer.brackets (some rootOperationTypeDefinition))
+
+rootOperationTypeDefinition :: Parser AST.RootOperationTypeDefinition
+rootOperationTypeDefinition =
+  AST.RootOperationTypeDefinition
+    <$> operationType
+    <*> (Lexer.colon *> namedType)
+
+typeDefinition :: Parser AST.TypeDefinition
+typeDefinition =
+  choice $
+    try
+      <$> [ AST.TypeDefinitionScalar <$> scalarTypeDefinition,
+            AST.TypeDefinitionInterface <$> interfaceTypeDefinition,
+            AST.TypeDefinitionObject <$> objectTypeDefinition
+          ]
+
+scalarTypeDefinition :: Parser AST.ScalarTypeDefinition
+scalarTypeDefinition =
+  AST.ScalarTypeDefinition
+    <$> optional description
+      <*> (Lexer.symbol "scalar" *> name)
+      <*> directives
+
+interfaceTypeDefinition :: Parser AST.InterfaceTypeDefinition
+interfaceTypeDefinition =
+  AST.InterfaceTypeDefinition
+    <$> optional description
+    <*> (Lexer.symbol "interface" *> name)
+    <*> optionalImplementsInterfaces
+    <*> directives
+    <*> optionalFieldsDefinition
+
+objectTypeDefinition :: Parser AST.ObjectTypeDefinition
+objectTypeDefinition =
+  AST.ObjectTypeDefinition
+    <$> optional description
+    <*> (Lexer.symbol "type" *> name)
+    <*> optionalImplementsInterfaces
+    <*> directives
+    <*> fieldsDefintion
+
+optionalImplementsInterfaces :: Parser AST.ImplementsInterfaces
+optionalImplementsInterfaces = (implementsInterfaces <|> pure [])
+
+implementsInterfaces :: Parser AST.ImplementsInterfaces
+implementsInterfaces =
+  ((:) <$> ((Lexer.symbol "implements" *> optional Lexer.and) *> namedType))
+    <*> many (Lexer.and *> namedType)
+
+fieldsDefintion :: Parser AST.FieldsDefinition
+fieldsDefintion = Lexer.brackets (some fieldDefinition)
+
+optionalFieldsDefinition :: Parser AST.FieldsDefinition
+optionalFieldsDefinition = fieldsDefintion <|> pure []
+
+fieldDefinition :: Parser AST.FieldDefinition
+fieldDefinition =
+  AST.FieldDefinition
+    <$> optional description
+    <*> name
+    <*> (argumentsDefinition <|> pure [])
+    <*> (Lexer.colon *> gQLType)
+    <*> directives
+
+argumentsDefinition :: Parser AST.ArgumentsDefinition
+argumentsDefinition = Lexer.parens (some inputValueDefinition)
+
+inputValueDefinition :: Parser AST.InputValueDefinition
+inputValueDefinition =
+  AST.InputValueDefinition
+    <$> optional description
+    <*> name
+    <*> (Lexer.colon *> gQLType)
+    <*> optionalDefaultValue
+    <*> directives
+
+optionalDefaultValue :: Parser AST.DefaultValue
+optionalDefaultValue = optional $ Lexer.equal *> value
