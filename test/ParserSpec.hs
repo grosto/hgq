@@ -582,3 +582,100 @@ spec = describe "Parser" $ do
                       []
                   ]
               )
+      context "union type definition" $ do
+        it "should parse union of one type" $ do
+          parse
+            typeDefinition
+            ""
+            [r|union SearchResult = | Photo|]
+            `shouldParse` AST.TypeDefinitionUnion
+              ( AST.UnionTypeDefinition
+                  Nothing
+                  (AST.Name "SearchResult")
+                  []
+                  [AST.NamedType "Photo"]
+              )
+        it "should parse union of two types" $ do
+          parse
+            typeDefinition
+            ""
+            [r|union SearchResult = Photo | Person|]
+            `shouldParse` AST.TypeDefinitionUnion
+              ( AST.UnionTypeDefinition
+                  Nothing
+                  (AST.Name "SearchResult")
+                  []
+                  [AST.NamedType "Photo", AST.NamedType "Person"]
+              )
+        it "should support directives" $ do
+          parse
+            typeDefinition
+            ""
+            [r|union SearchResult @directive = Photo | Person|]
+            `shouldParse` AST.TypeDefinitionUnion
+              ( AST.UnionTypeDefinition
+                  Nothing
+                  (AST.Name "SearchResult")
+                  [AST.Directive (AST.Name "directive") []]
+                  [AST.NamedType "Photo", AST.NamedType "Person"]
+              )
+      context "enum type definition" $ do
+        context "enum value" $ do
+          it "should not throw on 'true', 'false' and 'null'" $ do
+            parse enumValue "" `shouldFailOn` "true "
+            parse enumValue "" `shouldFailOn` "false "
+            parse enumValue "" `shouldFailOn` "null "
+        it "should parse enum of one" $ do
+          parse
+            typeDefinition
+            ""
+            [r|enum Direction {
+              NORTH
+            }|]
+            `shouldParse` AST.TypeDefinitionEnum
+              ( AST.EnumTypeDefinition
+                  Nothing
+                  (AST.Name "Direction")
+                  []
+                  [AST.EnumValueDefinition Nothing (AST.EnumValue "NORTH") []]
+              )
+        it "should parse union of two" $ do
+          parse
+            typeDefinition
+            ""
+            [r|enum Direction {
+              NORTH
+              EAST
+            }|]
+            `shouldParse` AST.TypeDefinitionEnum
+              ( AST.EnumTypeDefinition
+                  Nothing
+                  (AST.Name "Direction")
+                  []
+                  [ AST.EnumValueDefinition Nothing (AST.EnumValue "NORTH") [],
+                    AST.EnumValueDefinition Nothing (AST.EnumValue "EAST") []
+                  ]
+              )
+        it "should support directives" $ do
+          parse
+            typeDefinition
+            ""
+            [r|enum Direction @directive {
+              NORTH
+              EAST @innerdirective
+            }|]
+            `shouldParse` AST.TypeDefinitionEnum
+              ( AST.EnumTypeDefinition
+                  Nothing
+                  (AST.Name "Direction")
+                  [AST.Directive (AST.Name "directive") []]
+                  [ AST.EnumValueDefinition
+                      Nothing
+                      (AST.EnumValue "NORTH")
+                      [],
+                    AST.EnumValueDefinition
+                      Nothing
+                      (AST.EnumValue "EAST")
+                      [AST.Directive (AST.Name "innerdirective") []]
+                  ]
+              )

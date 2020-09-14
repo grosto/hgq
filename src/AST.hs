@@ -91,6 +91,13 @@ data ValueConst
   | VCObject (Map.Map Name ValueConst)
   deriving (Show, Eq)
 
+newtype EnumValue = EnumValue
+  { unEnumValue :: T.Text
+  }
+  deriving
+    (Eq, Ord, Show, IsString)
+    via T.Text
+
 -- Fragments
 data FragmentDefinition = FragmentDefinition
   { fName :: FragmentName,
@@ -166,6 +173,8 @@ data TypeDefinition
   = TypeDefinitionScalar ScalarTypeDefinition
   | TypeDefinitionObject ObjectTypeDefinition
   | TypeDefinitionInterface InterfaceTypeDefinition
+  | TypeDefinitionUnion UnionTypeDefinition
+  | TypeDefinitionEnum EnumTypeDefinition
   deriving (Show, Eq)
 
 data ScalarTypeDefinition = ScalarTypeDefinition
@@ -192,6 +201,31 @@ data InterfaceTypeDefinition = InterfaceTypeDefinition
     itImplementsInterfaces :: ImplementsInterfaces,
     itDirectives :: Directives,
     itFieldsDefinitions :: FieldsDefinition
+  }
+  deriving (Show, Eq)
+
+type UnionMemberTypes = [NamedType]
+
+data UnionTypeDefinition = UnionTypeDefinition
+  { utDescription :: Maybe Description,
+    utName :: Name,
+    utDirectives :: Directives,
+    utUnionMemberTypes :: UnionMemberTypes
+  }
+  deriving (Show, Eq)
+
+data EnumTypeDefinition = EnumTypeDefinition
+  { etDescription :: Maybe Description,
+    etName :: Name,
+    etDirectives :: Directives,
+    etEnumValuesDefinition :: [EnumValueDefinition]
+  }
+  deriving (Show, Eq)
+
+data EnumValueDefinition = EnumValueDefinition
+  { evDescription :: Maybe Description,
+    evEnumValue :: EnumValue,
+    evDirectives :: Directives
   }
   deriving (Show, Eq)
 

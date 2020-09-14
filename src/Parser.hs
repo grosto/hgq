@@ -6,6 +6,7 @@ import Data.Bool (Bool (..))
 import Data.Function (($))
 import qualified Data.Map.Strict as Map
 import Data.Maybe (Maybe (..))
+import qualified Data.Text as T
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
@@ -16,6 +17,9 @@ name = AST.Name <$> Lexer.name <?> "Name"
 
 description :: Parser AST.Description
 description = AST.Description <$> Lexer.stringVal <?> "Description"
+
+keywordGuard :: [T.Text] -> Parser ()
+keywordGuard keywords = notFollowedBy ((choice $ string <$> keywords) *> notFollowedBy Lexer.allowedNameChars)
 
 document :: Parser AST.Document
 document =
@@ -115,6 +119,12 @@ objectFieldG val = (,) <$> name <* Lexer.colon <*> val
 boolVal :: Parser Bool
 boolVal = True <$ Lexer.symbol "true" <|> False <$ Lexer.symbol "false"
 
+enumValue :: Parser AST.EnumValue
+enumValue = AST.EnumValue <$> (guards *> Lexer.name)
+  where
+    guards =
+      keywordGuard $ ["true", "false", "null"]
+
 -- Fragments
 fragment :: Parser AST.FragmentDefinition
 fragment =
@@ -125,9 +135,7 @@ fragment =
       <*> selectionSet
 
 fragmentName :: Parser AST.FragmentName
-fragmentName = AST.FragmentName <$> (keywordGuard *> Lexer.name)
-  where
-    keywordGuard = notFollowedBy (string "on" *> notFollowedBy Lexer.allowedNameChars)
+fragmentName = AST.FragmentName <$> (keywordGuard (["on"]) *> Lexer.name)
 
 typeCondition :: Parser AST.TypeCondition
 typeCondition = AST.TypeCondition <$> (Lexer.symbol "on" *> namedType)
@@ -187,7 +195,9 @@ typeDefinition =
     try
       <$> [ AST.TypeDefinitionScalar <$> scalarTypeDefinition,
             AST.TypeDefinitionInterface <$> interfaceTypeDefinition,
-            AST.TypeDefinitionObject <$> objectTypeDefinition
+            AST.TypeDefinitionObject <$> objectTypeDefinition,
+            AST.TypeDefinitionUnion <$> unionTypeDefinition,
+            AST.TypeDefinitionEnum <$> enumTypeDefinition
           ]
 
 scalarTypeDefinition :: Parser AST.ScalarTypeDefinition
@@ -215,6 +225,22 @@ objectTypeDefinition =
     <*> directives
     <*> fieldsDefintion
 
+unionTypeDefinition :: Parser AST.UnionTypeDefinition
+unionTypeDefinition =
+  AST.UnionTypeDefinition
+    <$> optional description
+    <*> (Lexer.symbol "union" *> name)
+    <*> directives
+    <*> (unionMemberTypes <|> pure [])
+
+enumTypeDefinition :: Parser AST.EnumTypeDefinition
+enumTypeDefinition =
+  AST.EnumTypeDefinition
+    <$> optional description
+    <*> (Lexer.symbol "enum" *> name)
+    <*> directives
+    <*> enumValuesDefinition
+
 optionalImplementsInterfaces :: Parser AST.ImplementsInterfaces
 optionalImplementsInterfaces = (implementsInterfaces <|> pure [])
 
@@ -222,6 +248,17 @@ implementsInterfaces :: Parser AST.ImplementsInterfaces
 implementsInterfaces =
   ((:) <$> ((Lexer.symbol "implements" *> optional Lexer.and) *> namedType))
     <*> many (Lexer.and *> namedType)
+
+unionMemberTypes :: Parser AST.UnionMemberTypes
+unionMemberTypes =
+  ((:) <$> ((Lexer.symbol "=" *> optional Lexer.pipe) *> namedType))
+    <*> many (Lexer.pipe *> namedType)
+
+enumValuesDefinition :: Parser [AST.EnumValueDefinition]
+enumValuesDefinition = Lexer.brackets (some enumValueDefinition)
+  where
+    enumValueDefinition =
+      AST.EnumValueDefinition <$> optional description <*> enumValue <*> directives
 
 fieldsDefintion :: Parser AST.FieldsDefinition
 fieldsDefintion = Lexer.brackets (some fieldDefinition)
