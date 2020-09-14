@@ -37,8 +37,8 @@ import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = describe "Parser" $ do
-  context "Executable" $ do
-    context "Values Parser" $ do
+  context "executable definition" $ do
+    context "values" $ do
       it "parses Variable Value" $ do
         parse value "" "$input" `shouldParse` (AST.VVariable $ AST.Variable "input")
       it "parses Int Value" $ do
@@ -52,6 +52,13 @@ spec = describe "Parser" $ do
         parse value "" "true" `shouldParse` (AST.VBool True)
       it "parses Null Value" $ do
         parse value "" "null" `shouldParse` (AST.VNull)
+      context "enum value" $ do
+        it "should throw on 'true', 'false' and 'null'" $ do
+          parse enumValue "" `shouldFailOn` "true "
+          parse enumValue "" `shouldFailOn` "false "
+          parse enumValue "" `shouldFailOn` "null "
+        it "parses" $ do
+          parse value "" "EAST " `shouldParse` (AST.VEnum $ AST.EnumValue "EAST")
       it "parses List Value" $ do
         parse value "" "[100, $gec, \"gec\"]"
           `shouldParse` ( AST.VList
@@ -70,7 +77,7 @@ spec = describe "Parser" $ do
                                 ("gic", AST.VVariable (AST.Variable "gec"))
                               ]
                         )
-    context "Const Values Parser" $ do
+    context "const values" $ do
       it "parses Int Value Const" $ do
         parse valueConst "" "4" `shouldParse` (AST.VCInt 4)
       it "parses Float Value Const" $ do
@@ -128,7 +135,7 @@ spec = describe "Parser" $ do
                                 AST.NonNullNamedType "Int"
                         )
     context "field" $ do
-      it "should parse field with alias" $ do
+      it "parses field with alias" $ do
         parse
           field
           ""
@@ -141,7 +148,7 @@ spec = describe "Parser" $ do
             ]
             []
             (Just "smallPic")
-      it "should parse field without alias" $ do
+      it "parses field without alias" $ do
         parse
           field
           ""
@@ -155,7 +162,7 @@ spec = describe "Parser" $ do
             []
             Nothing
     context "directive" $ do
-      it "should parse directives without arguments" $ do
+      it "parses without arguments" $ do
         parse
           directives
           ""
@@ -163,7 +170,7 @@ spec = describe "Parser" $ do
           `shouldParse` [ AST.Directive (AST.Name "super") [],
                           AST.Directive (AST.Name "power") []
                         ]
-      it "should parse directives with arguments" $ do
+      it "parses with arguments" $ do
         parse
           directives
           ""
@@ -173,7 +180,7 @@ spec = describe "Parser" $ do
                         ]
 
     context "fragments" $ do
-      it "parses fragment definition" $ do
+      it "parses definition" $ do
         parse
           fragment
           ""
@@ -196,7 +203,7 @@ spec = describe "Parser" $ do
                                   Nothing
                             ]
                         )
-      it "fragment name cannot be on" $ do
+      it "throws if fragment name is on" $ do
         parse
           fragmentName
           ""
@@ -224,7 +231,7 @@ spec = describe "Parser" $ do
                             []
                         )
     context "selectionSet" $ do
-      it "should parse fragment spreads" $
+      it "parses fragment spreads" $
         parse
           selectionSet
           ""
@@ -246,7 +253,7 @@ spec = describe "Parser" $ do
                           AST.SelectionFragmentSpread $
                             AST.FragmentSpread (AST.FragmentName "profilePhoto") []
                         ]
-      it "should parse inline fragments without type condition" $
+      it "parses inline fragments without type condition" $
         parse
           selectionSet
           ""
@@ -273,7 +280,7 @@ spec = describe "Parser" $ do
                                 AST.SelectionField $ AST.Field (AST.Name "birthday") [] [] Nothing
                               ]
                         ]
-      it "should parse inline fragments with type condition" $
+      it "parses inline fragments with type condition" $
         parse
           selectionSet
           ""
@@ -293,8 +300,8 @@ spec = describe "Parser" $ do
                                 AST.SelectionField $ AST.Field (AST.Name "birthday") [] [] Nothing
                               ]
                         ]
-    context "documents" $ do
-      it "should parse operation with name" $ do
+    context "document" $ do
+      it "parses operation with name" $ do
         parse
           document
           ""
@@ -305,7 +312,7 @@ spec = describe "Parser" $ do
                             AST.Operation AST.Mutation (Just "like") [] [] $
                               [AST.SelectionField $ AST.Field "like" [] [] Nothing]
                         )
-      it "should parse operation with arguments" $ do
+      it "parses operation with arguments" $ do
         parse
           document
           ""
@@ -332,7 +339,7 @@ spec = describe "Parser" $ do
                                       Nothing
                                 ]
                         )
-      it "should parse operation with directives" $ do
+      it "parses operation with directives" $ do
         parse
           document
           ""
@@ -363,7 +370,7 @@ spec = describe "Parser" $ do
                                       Nothing
                                 ]
                         )
-      it "should parse top level fragment definition" $ do
+      it "parses top level fragment definition" $ do
         parse
           document
           ""
@@ -387,9 +394,9 @@ spec = describe "Parser" $ do
                                     Nothing
                               ]
                         )
-  context "Type System" $ do
+  context "type system definition" $ do
     context "schema definition" $ do
-      it "should parse schema definition with description" $ do
+      it "parses schema definition with description" $ do
         parse
           schemaDefinition
           ""
@@ -406,7 +413,7 @@ spec = describe "Parser" $ do
               AST.RootOperationTypeDefinition AST.Mutation $ AST.NamedType "Mutation",
               AST.RootOperationTypeDefinition AST.Subscription $ AST.NamedType "Subscription"
             ]
-      it "should parse schema without description" $ do
+      it "parses schema without description" $ do
         parse
           schemaDefinition
           ""
@@ -423,7 +430,7 @@ spec = describe "Parser" $ do
               AST.RootOperationTypeDefinition AST.Subscription $ AST.NamedType "MySubscriptionRootType"
             ]
     context "type definitions" $ do
-      it "should parse scalar type definition" $ do
+      it "parses scalar type definition" $ do
         parse
           typeDefinition
           ""
@@ -435,7 +442,7 @@ spec = describe "Parser" $ do
                 []
             )
       context "interface type definition" $ do
-        it "should parse without implements clause" $ do
+        it "parses without implements clause" $ do
           parse
             typeDefinition
             ""
@@ -458,7 +465,7 @@ spec = describe "Parser" $ do
                       []
                   ]
               )
-        it "should parse with implements clause" $ do
+        it "parses with implements clause" $ do
           parse
             typeDefinition
             ""
@@ -481,7 +488,7 @@ spec = describe "Parser" $ do
                       []
                   ]
               )
-        it "should parse with multiple implements clauses" $ do
+        it "parses with multiple implements clauses" $ do
           parse
             typeDefinition
             ""
@@ -505,7 +512,7 @@ spec = describe "Parser" $ do
                   ]
               )
       context "object type definition" $ do
-        it "should parse without implement clause" $
+        it "parses without implement clause" $
           parse
             typeDefinition
             ""
@@ -540,7 +547,7 @@ spec = describe "Parser" $ do
                       []
                   ]
               )
-        it "should parse with implement clause" $
+        it "parses with implement clause" $
           parse
             typeDefinition
             ""
@@ -561,7 +568,7 @@ spec = describe "Parser" $ do
                       []
                   ]
               )
-        it "should parse with implement clause and directives" $
+        it "parses with implement clause and directives" $
           parse
             typeDefinition
             ""
@@ -583,7 +590,7 @@ spec = describe "Parser" $ do
                   ]
               )
       context "union type definition" $ do
-        it "should parse union of one type" $ do
+        it "parses union of one type" $ do
           parse
             typeDefinition
             ""
@@ -595,7 +602,7 @@ spec = describe "Parser" $ do
                   []
                   [AST.NamedType "Photo"]
               )
-        it "should parse union of two types" $ do
+        it "parses union of two types" $ do
           parse
             typeDefinition
             ""
@@ -607,7 +614,7 @@ spec = describe "Parser" $ do
                   []
                   [AST.NamedType "Photo", AST.NamedType "Person"]
               )
-        it "should support directives" $ do
+        it "supports directives" $ do
           parse
             typeDefinition
             ""
@@ -620,12 +627,7 @@ spec = describe "Parser" $ do
                   [AST.NamedType "Photo", AST.NamedType "Person"]
               )
       context "enum type definition" $ do
-        context "enum value" $ do
-          it "should not throw on 'true', 'false' and 'null'" $ do
-            parse enumValue "" `shouldFailOn` "true "
-            parse enumValue "" `shouldFailOn` "false "
-            parse enumValue "" `shouldFailOn` "null "
-        it "should parse enum of one" $ do
+        it "parses enum of one" $ do
           parse
             typeDefinition
             ""
@@ -639,7 +641,7 @@ spec = describe "Parser" $ do
                   []
                   [AST.EnumValueDefinition Nothing (AST.EnumValue "NORTH") []]
               )
-        it "should parse union of two" $ do
+        it "parses union of two" $ do
           parse
             typeDefinition
             ""
@@ -656,7 +658,7 @@ spec = describe "Parser" $ do
                     AST.EnumValueDefinition Nothing (AST.EnumValue "EAST") []
                   ]
               )
-        it "should support directives" $ do
+        it "supports directives" $ do
           parse
             typeDefinition
             ""
@@ -677,5 +679,62 @@ spec = describe "Parser" $ do
                       Nothing
                       (AST.EnumValue "EAST")
                       [AST.Directive (AST.Name "innerdirective") []]
+                  ]
+              )
+      context "input object type definition" $ do
+        it "parses without directives and arguments" $
+          parse
+            typeDefinition
+            ""
+            [r|input Point2D {
+              x: Float
+              y: Float
+            }
+            |]
+            `shouldParse` AST.TypeDefinitionInputObject
+              ( AST.InputObjectTypeDefinition
+                  Nothing
+                  (AST.Name "Point2D")
+                  []
+                  [ AST.InputValueDefinition
+                      Nothing
+                      (AST.Name "x")
+                      (AST.GQLNamedType "Float")
+                      Nothing
+                      [],
+                    AST.InputValueDefinition
+                      Nothing
+                      (AST.Name "y")
+                      (AST.GQLNamedType "Float")
+                      Nothing
+                      []
+                  ]
+              )
+        it "parses with directives and default value" $
+          parse
+            typeDefinition
+            ""
+            [r|input Point2D @directive {
+              x: Float = 3
+              y: Float
+            }
+            |]
+            `shouldParse` AST.TypeDefinitionInputObject
+              ( AST.InputObjectTypeDefinition
+                  Nothing
+                  (AST.Name "Point2D")
+                  [AST.Directive (AST.Name "directive") []]
+                  [ AST.InputValueDefinition
+                      Nothing
+                      (AST.Name "x")
+                      (AST.GQLNamedType "Float")
+                      (Just $ AST.VInt 3)
+                      [],
+                    AST.InputValueDefinition
+                      Nothing
+                      (AST.Name "y")
+                      (AST.GQLNamedType "Float")
+                      Nothing
+                      []
                   ]
               )

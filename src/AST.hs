@@ -77,6 +77,7 @@ data Value
   | VString T.Text
   | VBool Bool
   | VNull
+  | VEnum EnumValue
   | VList [Value]
   | VObject (Map.Map Name Value)
   deriving (Show, Eq)
@@ -175,6 +176,7 @@ data TypeDefinition
   | TypeDefinitionInterface InterfaceTypeDefinition
   | TypeDefinitionUnion UnionTypeDefinition
   | TypeDefinitionEnum EnumTypeDefinition
+  | TypeDefinitionInputObject InputObjectTypeDefinition
   deriving (Show, Eq)
 
 data ScalarTypeDefinition = ScalarTypeDefinition
@@ -226,6 +228,16 @@ data EnumValueDefinition = EnumValueDefinition
   { evDescription :: Maybe Description,
     evEnumValue :: EnumValue,
     evDirectives :: Directives
+  }
+  deriving (Show, Eq)
+
+type InputFieldsDefinition = [InputValueDefinition]
+
+data InputObjectTypeDefinition = InputObjectTypeDefinition
+  { iotDescription :: Maybe Description,
+    iottName :: Name,
+    iotDirectives :: Directives,
+    iotInputFieldsDefinition :: InputFieldsDefinition
   }
   deriving (Show, Eq)
 

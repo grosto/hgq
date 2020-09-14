@@ -91,7 +91,8 @@ value =
       AST.VInt <$> Lexer.intVal,
       AST.VString <$> Lexer.stringVal,
       AST.VList <$> listG value,
-      AST.VObject <$> objectG value
+      AST.VObject <$> objectG value,
+      AST.VEnum <$> enumValue
     ]
 
 valueConst :: Parser AST.ValueConst
@@ -197,7 +198,8 @@ typeDefinition =
             AST.TypeDefinitionInterface <$> interfaceTypeDefinition,
             AST.TypeDefinitionObject <$> objectTypeDefinition,
             AST.TypeDefinitionUnion <$> unionTypeDefinition,
-            AST.TypeDefinitionEnum <$> enumTypeDefinition
+            AST.TypeDefinitionEnum <$> enumTypeDefinition,
+            AST.TypeDefinitionInputObject <$> inputObjectTypeDefinition
           ]
 
 scalarTypeDefinition :: Parser AST.ScalarTypeDefinition
@@ -260,6 +262,14 @@ enumValuesDefinition = Lexer.brackets (some enumValueDefinition)
     enumValueDefinition =
       AST.EnumValueDefinition <$> optional description <*> enumValue <*> directives
 
+inputObjectTypeDefinition :: Parser AST.InputObjectTypeDefinition
+inputObjectTypeDefinition =
+  AST.InputObjectTypeDefinition
+    <$> optional description
+    <*> (Lexer.symbol "input" *> name)
+    <*> directives
+    <*> (inputFieldsDefinition <|> pure [])
+
 fieldsDefintion :: Parser AST.FieldsDefinition
 fieldsDefintion = Lexer.brackets (some fieldDefinition)
 
@@ -277,6 +287,9 @@ fieldDefinition =
 
 argumentsDefinition :: Parser AST.ArgumentsDefinition
 argumentsDefinition = Lexer.parens (some inputValueDefinition)
+
+inputFieldsDefinition :: Parser AST.InputFieldsDefinition
+inputFieldsDefinition = Lexer.brackets (some inputValueDefinition)
 
 inputValueDefinition :: Parser AST.InputValueDefinition
 inputValueDefinition =
