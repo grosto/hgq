@@ -25,7 +25,9 @@ newtype Description = Description
     (Eq, Ord, Show, IsString)
     via T.Text
 
-data Document = DocumentOperation Operation | DocumentFragment FragmentDefinition
+type Document = [Definition]
+
+data Definition = DefinitionOperation Operation | DefinitionFragment FragmentDefinition | DefinitionTypeSystem TypeSystemDefinition
   deriving (Show, Eq)
 
 data OperationType = Query | Mutation | Subscription
@@ -157,6 +159,12 @@ data NonNullGQLType = NonNullNamedType Name | NonNullListType GQLType
   deriving (Show, Eq)
 
 -- type system
+
+data TypeSystemDefinition
+  = TypeSystemDefinitionSchema SchemaDefinition
+  | TypeSystemDefinitionType TypeDefinition
+  deriving (Show, Eq)
+
 data SchemaDefinition = SchemaDefinition
   { sDescription :: Maybe Description,
     sDirectives :: Directives,

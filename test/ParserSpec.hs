@@ -308,10 +308,11 @@ spec = describe "Parser" $ do
           [r|mutation like { 
           like
          } |]
-          `shouldParse` ( AST.DocumentOperation $
-                            AST.Operation AST.Mutation (Just "like") [] [] $
-                              [AST.SelectionField $ AST.Field "like" [] [] Nothing]
-                        )
+          `shouldParse` [ ( AST.DefinitionOperation $
+                              AST.Operation AST.Mutation (Just "like") [] [] $
+                                [AST.SelectionField $ AST.Field "like" [] [] Nothing]
+                          )
+                        ]
       it "parses operation with arguments" $ do
         parse
           document
@@ -319,26 +320,27 @@ spec = describe "Parser" $ do
           [r|query like($id: Int) { 
           likeStory (id: $id)
          } |]
-          `shouldParse` ( AST.DocumentOperation $
-                            AST.Operation
-                              AST.Query
-                              (Just "like")
-                              [ AST.VariableDefinition
-                                  (AST.Variable "id")
-                                  (AST.GQLNamedType $ AST.NamedType "Int")
-                              ]
-                              []
-                              $ [ AST.SelectionField $
-                                    AST.Field
-                                      "likeStory"
-                                      [ AST.Argument
-                                          (AST.Name "id")
-                                          (AST.VVariable (AST.Variable "id"))
-                                      ]
-                                      []
-                                      Nothing
+          `shouldParse` [ ( AST.DefinitionOperation $
+                              AST.Operation
+                                AST.Query
+                                (Just "like")
+                                [ AST.VariableDefinition
+                                    (AST.Variable "id")
+                                    (AST.GQLNamedType $ AST.NamedType "Int")
                                 ]
-                        )
+                                []
+                                $ [ AST.SelectionField $
+                                      AST.Field
+                                        "likeStory"
+                                        [ AST.Argument
+                                            (AST.Name "id")
+                                            (AST.VVariable (AST.Variable "id"))
+                                        ]
+                                        []
+                                        Nothing
+                                  ]
+                          )
+                        ]
       it "parses operation with directives" $ do
         parse
           document
@@ -346,30 +348,31 @@ spec = describe "Parser" $ do
           [r|query like($id: Int) @excludeField(name: "photo") @addExternalFields(source: "profiles") { 
           likeStory (id: $id)
           } |]
-          `shouldParse` ( AST.DocumentOperation $
-                            AST.Operation
-                              AST.Query
-                              (Just "like")
-                              [ AST.VariableDefinition
-                                  (AST.Variable "id")
-                                  (AST.GQLNamedType $ AST.NamedType "Int")
-                              ]
-                              [ AST.Directive
-                                  (AST.Name "excludeField")
-                                  [AST.Argument "name" (AST.VString "photo")],
-                                AST.Directive (AST.Name "addExternalFields") [AST.Argument "source" (AST.VString "profiles")]
-                              ]
-                              $ [ AST.SelectionField $
-                                    AST.Field
-                                      "likeStory"
-                                      [ AST.Argument
-                                          (AST.Name "id")
-                                          (AST.VVariable (AST.Variable "id"))
-                                      ]
-                                      []
-                                      Nothing
+          `shouldParse` [ ( AST.DefinitionOperation $
+                              AST.Operation
+                                AST.Query
+                                (Just "like")
+                                [ AST.VariableDefinition
+                                    (AST.Variable "id")
+                                    (AST.GQLNamedType $ AST.NamedType "Int")
                                 ]
-                        )
+                                [ AST.Directive
+                                    (AST.Name "excludeField")
+                                    [AST.Argument "name" (AST.VString "photo")],
+                                  AST.Directive (AST.Name "addExternalFields") [AST.Argument "source" (AST.VString "profiles")]
+                                ]
+                                $ [ AST.SelectionField $
+                                      AST.Field
+                                        "likeStory"
+                                        [ AST.Argument
+                                            (AST.Name "id")
+                                            (AST.VVariable (AST.Variable "id"))
+                                        ]
+                                        []
+                                        Nothing
+                                  ]
+                          )
+                        ]
       it "parses top level fragment definition" $ do
         parse
           document
@@ -379,21 +382,22 @@ spec = describe "Parser" $ do
           name
           profilePic(size: 50)
         } |]
-          `shouldParse` ( AST.DocumentFragment $
-                            AST.FragmentDefinition
-                              (AST.FragmentName "friendFields")
-                              (AST.TypeCondition (AST.NamedType "User"))
-                              []
-                              [ AST.SelectionField $ AST.Field "id" [] [] Nothing,
-                                AST.SelectionField $ AST.Field "name" [] [] Nothing,
-                                AST.SelectionField $
-                                  AST.Field
-                                    "profilePic"
-                                    [AST.Argument "size" (AST.VInt 50)]
-                                    []
-                                    Nothing
-                              ]
-                        )
+          `shouldParse` [ ( AST.DefinitionFragment $
+                              AST.FragmentDefinition
+                                (AST.FragmentName "friendFields")
+                                (AST.TypeCondition (AST.NamedType "User"))
+                                []
+                                [ AST.SelectionField $ AST.Field "id" [] [] Nothing,
+                                  AST.SelectionField $ AST.Field "name" [] [] Nothing,
+                                  AST.SelectionField $
+                                    AST.Field
+                                      "profilePic"
+                                      [AST.Argument "size" (AST.VInt 50)]
+                                      []
+                                      Nothing
+                                ]
+                          )
+                        ]
   context "type system definition" $ do
     context "schema definition" $ do
       it "parses schema definition with description" $ do

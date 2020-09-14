@@ -3,10 +3,13 @@ module Parser where
 import qualified AST
 import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
 import Data.Bool (Bool (..))
+import Data.Either (Either (..))
 import Data.Function (($))
 import qualified Data.Map.Strict as Map
 import Data.Maybe (Maybe (..))
+import Data.String (String)
 import qualified Data.Text as T
+import Data.Void (Void)
 import Lexer (Parser)
 import qualified Lexer as Lexer
 import Text.Megaparsec hiding (State)
@@ -21,10 +24,16 @@ description = AST.Description <$> Lexer.stringVal <?> "Description"
 keywordGuard :: [T.Text] -> Parser ()
 keywordGuard keywords = notFollowedBy ((choice $ string <$> keywords) *> notFollowedBy Lexer.allowedNameChars)
 
+parseDocument :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) AST.Document
+parseDocument = parse document
+
 document :: Parser AST.Document
-document =
+document = some definition
+
+definition :: Parser AST.Definition
+definition =
   Lexer.spaceConsumer
-    *> (AST.DocumentOperation <$> operation <|> AST.DocumentFragment <$> fragment)
+    *> (AST.DefinitionOperation <$> try operation <|> AST.DefinitionFragment <$> try fragment <|> AST.DefinitionTypeSystem <$> try typeSystemDefinition)
 
 operationType :: Parser AST.OperationType
 operationType =
@@ -176,6 +185,10 @@ nonNullListType :: Parser AST.NonNullGQLType
 nonNullListType = AST.NonNullListType <$> Lexer.squareBrackets gQLType <* Lexer.bang
 
 -- Type system
+typeSystemDefinition :: Parser AST.TypeSystemDefinition
+typeSystemDefinition =
+  AST.TypeSystemDefinitionSchema <$> try schemaDefinition
+    <|> AST.TypeSystemDefinitionType <$> typeDefinition
 
 schemaDefinition :: Parser AST.SchemaDefinition
 schemaDefinition =
