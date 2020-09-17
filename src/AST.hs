@@ -1,5 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 
+-- {-# LANGUAGE StrictData #-}
+
 module AST where
 
 import Data.Bool (Bool)
