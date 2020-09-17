@@ -25,6 +25,8 @@ newtype Description = Description
     (Eq, Ord, Show, IsString)
     via T.Text
 
+type OptionalDescription = Maybe Description
+
 type Document = [Definition]
 
 data Definition = DefinitionOperation Operation | DefinitionFragment FragmentDefinition | DefinitionTypeSystem TypeSystemDefinition
@@ -166,7 +168,7 @@ data TypeSystemDefinition
   deriving (Show, Eq)
 
 data SchemaDefinition = SchemaDefinition
-  { sDescription :: Maybe Description,
+  { sDescription :: OptionalDescription,
     sDirectives :: Directives,
     sRootOperationTypeDefinitions :: [RootOperationTypeDefinition]
   }
@@ -188,14 +190,14 @@ data TypeDefinition
   deriving (Show, Eq)
 
 data ScalarTypeDefinition = ScalarTypeDefinition
-  { stdescription :: Maybe Description,
+  { stdescription :: OptionalDescription,
     stName :: Name,
     stDirectives :: Directives
   }
   deriving (Show, Eq)
 
 data ObjectTypeDefinition = ObjectTypeDefinition
-  { otDescription :: Maybe Description,
+  { otDescription :: OptionalDescription,
     otName :: Name,
     otImplementsInterfaces :: ImplementsInterfaces,
     otDirectives :: Directives,
@@ -206,7 +208,7 @@ data ObjectTypeDefinition = ObjectTypeDefinition
 type ImplementsInterfaces = [NamedType]
 
 data InterfaceTypeDefinition = InterfaceTypeDefinition
-  { itDescription :: Maybe Description,
+  { itDescription :: OptionalDescription,
     itName :: Name,
     itImplementsInterfaces :: ImplementsInterfaces,
     itDirectives :: Directives,
@@ -217,7 +219,7 @@ data InterfaceTypeDefinition = InterfaceTypeDefinition
 type UnionMemberTypes = [NamedType]
 
 data UnionTypeDefinition = UnionTypeDefinition
-  { utDescription :: Maybe Description,
+  { utDescription :: OptionalDescription,
     utName :: Name,
     utDirectives :: Directives,
     utUnionMemberTypes :: UnionMemberTypes
@@ -225,7 +227,7 @@ data UnionTypeDefinition = UnionTypeDefinition
   deriving (Show, Eq)
 
 data EnumTypeDefinition = EnumTypeDefinition
-  { etDescription :: Maybe Description,
+  { etDescription :: OptionalDescription,
     etName :: Name,
     etDirectives :: Directives,
     etEnumValuesDefinition :: [EnumValueDefinition]
@@ -233,7 +235,7 @@ data EnumTypeDefinition = EnumTypeDefinition
   deriving (Show, Eq)
 
 data EnumValueDefinition = EnumValueDefinition
-  { evDescription :: Maybe Description,
+  { evDescription :: OptionalDescription,
     evEnumValue :: EnumValue,
     evDirectives :: Directives
   }
@@ -242,7 +244,7 @@ data EnumValueDefinition = EnumValueDefinition
 type InputFieldsDefinition = [InputValueDefinition]
 
 data InputObjectTypeDefinition = InputObjectTypeDefinition
-  { iotDescription :: Maybe Description,
+  { iotDescription :: OptionalDescription,
     iottName :: Name,
     iotDirectives :: Directives,
     iotInputFieldsDefinition :: InputFieldsDefinition
@@ -252,7 +254,7 @@ data InputObjectTypeDefinition = InputObjectTypeDefinition
 type FieldsDefinition = [FieldDefinition]
 
 data FieldDefinition = FieldDefinition
-  { fdDescription :: Maybe Description,
+  { fdDescription :: OptionalDescription,
     fdName :: Name,
     fdArgument :: ArgumentsDefinition,
     fdType :: GQLType,
@@ -265,7 +267,7 @@ type ArgumentsDefinition = [InputValueDefinition]
 type DefaultValue = Maybe Value
 
 data InputValueDefinition = InputValueDefinition
-  { adDescription :: Maybe Description,
+  { adDescription :: OptionalDescription,
     adName :: Name,
     adType :: GQLType,
     adDefaultValue :: DefaultValue,

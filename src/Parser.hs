@@ -2,6 +2,7 @@ module Parser where
 
 import qualified AST
 import Control.Applicative (pure, (*>), (<$), (<$>), (<*), (<*>))
+import Control.Monad ((>>=))
 import Data.Bool (Bool (..))
 import Data.Either (Either (..))
 import Data.Function (($))
@@ -18,8 +19,8 @@ import Text.Megaparsec.Char (string)
 name :: Parser AST.Name
 name = AST.Name <$> Lexer.name <?> "Name"
 
-description :: Parser AST.Description
-description = AST.Description <$> Lexer.stringVal <?> "Description"
+optionalDescription :: Parser AST.OptionalDescription
+optionalDescription = optional (AST.Description <$> Lexer.stringVal <?> "Description")
 
 keywordGuard :: [T.Text] -> Parser ()
 keywordGuard keywords = notFollowedBy ((choice $ string <$> keywords) *> notFollowedBy Lexer.allowedNameChars)
@@ -193,7 +194,7 @@ typeSystemDefinition =
 schemaDefinition :: Parser AST.SchemaDefinition
 schemaDefinition =
   AST.SchemaDefinition
-    <$> optional description
+    <$> optionalDescription
       <*> (Lexer.symbol "schema" *> directives)
       <*> (Lexer.brackets (some rootOperationTypeDefinition))
 
@@ -205,56 +206,41 @@ rootOperationTypeDefinition =
 
 typeDefinition :: Parser AST.TypeDefinition
 typeDefinition =
-  choice $
-    try
-      <$> [ AST.TypeDefinitionScalar <$> scalarTypeDefinition,
-            AST.TypeDefinitionInterface <$> interfaceTypeDefinition,
-            AST.TypeDefinitionObject <$> objectTypeDefinition,
-            AST.TypeDefinitionUnion <$> unionTypeDefinition,
-            AST.TypeDefinitionEnum <$> enumTypeDefinition,
-            AST.TypeDefinitionInputObject <$> inputObjectTypeDefinition
-          ]
+  optionalDescription >>= \parsedDescription ->
+    choice $
+      try
+        <$> [ AST.TypeDefinitionScalar <$> scalarTypeDefinition parsedDescription,
+              AST.TypeDefinitionInterface <$> interfaceTypeDefinition parsedDescription,
+              AST.TypeDefinitionObject <$> objectTypeDefinition parsedDescription,
+              AST.TypeDefinitionUnion <$> unionTypeDefinition parsedDescription,
+              AST.TypeDefinitionEnum <$> enumTypeDefinition parsedDescription,
+              AST.TypeDefinitionInputObject <$> inputObjectTypeDefinition parsedDescription
+            ]
 
-scalarTypeDefinition :: Parser AST.ScalarTypeDefinition
-scalarTypeDefinition =
+scalarTypeDefinition :: AST.OptionalDescription -> Parser AST.ScalarTypeDefinition
+scalarTypeDefinition parsedDescription =
   AST.ScalarTypeDefinition
-    <$> optional description
-      <*> (Lexer.symbol "scalar" *> name)
-      <*> directives
+    parsedDescription
+    <$> (Lexer.symbol "scalar" *> name)
+    <*> directives
 
-interfaceTypeDefinition :: Parser AST.InterfaceTypeDefinition
-interfaceTypeDefinition =
+interfaceTypeDefinition :: AST.OptionalDescription -> Parser AST.InterfaceTypeDefinition
+interfaceTypeDefinition parsedDescription =
   AST.InterfaceTypeDefinition
-    <$> optional description
-    <*> (Lexer.symbol "interface" *> name)
+    parsedDescription
+    <$> (Lexer.symbol "interface" *> name)
     <*> optionalImplementsInterfaces
     <*> directives
     <*> optionalFieldsDefinition
 
-objectTypeDefinition :: Parser AST.ObjectTypeDefinition
-objectTypeDefinition =
+objectTypeDefinition :: AST.OptionalDescription -> Parser AST.ObjectTypeDefinition
+objectTypeDefinition parsedDescription =
   AST.ObjectTypeDefinition
-    <$> optional description
-    <*> (Lexer.symbol "type" *> name)
+    parsedDescription
+    <$> (Lexer.symbol "type" *> name)
     <*> optionalImplementsInterfaces
     <*> directives
     <*> fieldsDefintion
-
-unionTypeDefinition :: Parser AST.UnionTypeDefinition
-unionTypeDefinition =
-  AST.UnionTypeDefinition
-    <$> optional description
-    <*> (Lexer.symbol "union" *> name)
-    <*> directives
-    <*> (unionMemberTypes <|> pure [])
-
-enumTypeDefinition :: Parser AST.EnumTypeDefinition
-enumTypeDefinition =
-  AST.EnumTypeDefinition
-    <$> optional description
-    <*> (Lexer.symbol "enum" *> name)
-    <*> directives
-    <*> enumValuesDefinition
 
 optionalImplementsInterfaces :: Parser AST.ImplementsInterfaces
 optionalImplementsInterfaces = (implementsInterfaces <|> pure [])
@@ -264,22 +250,38 @@ implementsInterfaces =
   ((:) <$> ((Lexer.symbol "implements" *> optional Lexer.and) *> namedType))
     <*> many (Lexer.and *> namedType)
 
+unionTypeDefinition :: AST.OptionalDescription -> Parser AST.UnionTypeDefinition
+unionTypeDefinition parsedDescription =
+  AST.UnionTypeDefinition
+    parsedDescription
+    <$> (Lexer.symbol "union" *> name)
+    <*> directives
+    <*> (unionMemberTypes <|> pure [])
+
 unionMemberTypes :: Parser AST.UnionMemberTypes
 unionMemberTypes =
   ((:) <$> ((Lexer.symbol "=" *> optional Lexer.pipe) *> namedType))
     <*> many (Lexer.pipe *> namedType)
 
+enumTypeDefinition :: AST.OptionalDescription -> Parser AST.EnumTypeDefinition
+enumTypeDefinition parsedDescription =
+  AST.EnumTypeDefinition
+    parsedDescription
+    <$> (Lexer.symbol "enum" *> name)
+    <*> directives
+    <*> enumValuesDefinition
+
 enumValuesDefinition :: Parser [AST.EnumValueDefinition]
 enumValuesDefinition = Lexer.brackets (some enumValueDefinition)
   where
     enumValueDefinition =
-      AST.EnumValueDefinition <$> optional description <*> enumValue <*> directives
+      AST.EnumValueDefinition <$> optionalDescription <*> enumValue <*> directives
 
-inputObjectTypeDefinition :: Parser AST.InputObjectTypeDefinition
-inputObjectTypeDefinition =
+inputObjectTypeDefinition :: AST.OptionalDescription -> Parser AST.InputObjectTypeDefinition
+inputObjectTypeDefinition parsedDescription =
   AST.InputObjectTypeDefinition
-    <$> optional description
-    <*> (Lexer.symbol "input" *> name)
+    parsedDescription
+    <$> (Lexer.symbol "input" *> name)
     <*> directives
     <*> (inputFieldsDefinition <|> pure [])
 
@@ -292,7 +294,7 @@ optionalFieldsDefinition = fieldsDefintion <|> pure []
 fieldDefinition :: Parser AST.FieldDefinition
 fieldDefinition =
   AST.FieldDefinition
-    <$> optional description
+    <$> optionalDescription
     <*> name
     <*> (argumentsDefinition <|> pure [])
     <*> (Lexer.colon *> gQLType)
@@ -307,7 +309,7 @@ inputFieldsDefinition = Lexer.brackets (some inputValueDefinition)
 inputValueDefinition :: Parser AST.InputValueDefinition
 inputValueDefinition =
   AST.InputValueDefinition
-    <$> optional description
+    <$> optionalDescription
     <*> name
     <*> (Lexer.colon *> gQLType)
     <*> optionalDefaultValue
