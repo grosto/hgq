@@ -3,4 +3,7 @@
 ## Technical Milestones
 
 [x] Lexer
-[] Parser
+[x] Parser (Missing const values)
+[] Schema validation
+[] Executable document validate
+[] Execute
